@@ -369,7 +369,6 @@ def analyze_invoice_with_gemini(image, prompt_text, api_key, entry_type="منص�
     img_str = optimize_image_for_upload(image, max_size=(1800, 1800), quality=90)
     clean_key = str(api_key).strip().replace('"', '').replace("'", '').split("\n")[0].split(",")[0].strip()
     
-    # قائمة الموديلات المعتمدة الأصلية (مع الموديل المستقر أولاً)
     candidate_models = [
         "gemini-3.5-flash-lite",
         "gemini-3.6-flash",
@@ -517,7 +516,7 @@ if not api_key and os.path.exists(API_KEY_FILE):
     except Exception: pass
 
 # ═════════════════════════════════════════════════════════════════════════
-# ─── بوابة تسجيل الدخول الأصلية المعتمدة (بالركائز الثلاث كاملة) ───
+# ─── بوابة تسجيل الدخول المعتمدة ───
 # ═════════════════════════════════════════════════════════════════════════
 if not st.session_state.logged_in:
     st.markdown("""
@@ -746,7 +745,7 @@ div[data-testid="column"]:nth-child(2) button[kind="primary"] p { color: #FFFFFF
             clean_email = login_email.strip().lower()
             clean_pwd = login_password.strip()
             user_found = next((k for k in st.session_state.users_db if k.lower() == clean_email), None)
-            if user_found and st.session_state.users_db[user_found]["password_hash"] == hash_password(clean_pwd):
+            if user_found and st.session_state.users_db[user_found].get("password_hash") == hash_password(clean_pwd):
                 st.session_state.logged_in = True
                 st.session_state.current_user = user_found
                 st.query_params.clear()
@@ -823,7 +822,7 @@ else:
         "h_projname_ph": "Project Name", "h_cost_ph": "Cost Center", "h_inward_lbl": "Total Received Custody:", "h_sec_ph": "Section / Dept"
     }
 
-# ─── تنسيق الواجهة الداخلية بألوان متزنة ومريحة ───
+# ─── تنسيق الواجهة الداخلية ───
 if st.session_state.system_theme == "Dark":
     bg_app = "#0F172A"; bg_card = "#1E293B"; text_color = "#F8FAFC"; border_color = "#334155"
     header_bg = "#5C1D2E"; accent_blue = "#4A7C9D"
@@ -1001,7 +1000,7 @@ if selected_custody == t["add_custody"] and can_manage:
                 st.rerun()
 
 with col_user:
-    st.info(f"**{current_user_data['name']}** &bull; `{user_role}`")
+    st.info(f"**{current_user_data.get('name', 'User')}** &bull; `{user_role}`")
     b_u1, b_u2 = st.columns([1.2, 1])
     with b_u1:
         if can_manage and st.button(t["user_mgmt"], use_container_width=True):
@@ -1016,7 +1015,18 @@ with col_user:
 if can_manage and st.session_state.show_user_mgmt:
     st.divider()
     st.subheader("👥 User Management & Permissions" if not is_rtl else "👥 إدارة المستخدمين وصلاحيات العهد")
-    st.dataframe(pd.DataFrame([{"Email": k, "Name": v["name"], "Role": v["role"], "Custodies": str(v["allowed_custodies"])} for k, v in st.session_state.users_db.items()]), use_container_width=True)
+    
+    # ─── معالجة آمنة تماماً لجدول المستخدمين ───
+    users_table_data = []
+    for k, v in st.session_state.users_db.items():
+        if isinstance(v, dict):
+            users_table_data.append({
+                "Email": k,
+                "Name": v.get("name", "N/A"),
+                "Role": v.get("role", "Accountant"),
+                "Custodies": str(v.get("allowed_custodies", "All"))
+            })
+    st.dataframe(pd.DataFrame(users_table_data), use_container_width=True)
     st.stop()
 
 st.divider()
@@ -1247,7 +1257,7 @@ if st.session_state.active_tab == "records":
                                 "holder_name": st.session_state.h_holder, "delete": False, "drive_link": link
                             })
                             record_learned_sample(inv_no, desc, tot_amt, cat, pay_m, selected_custody)
-                            log_audit_event("INSERT", f"Added {entry_type_choice} {inv_no} total {tot_amt:,.2f} in {selected_custody}", current_user_data['name'], current_user_data['name'])
+                            log_audit_event("INSERT", f"Added {entry_type_choice} {inv_no} total {tot_amt:,.2f} in {selected_custody}", current_user_data.get('name', 'Admin'), current_user_data.get('name', 'Admin'))
                             st.toast("Saved successfully!" if not is_rtl else "تم الحفظ بنجاح!", icon="✅")
                             time.sleep(0.5)
                             st.session_state.pending_invoice = None
@@ -1295,10 +1305,10 @@ if st.session_state.active_tab == "records":
         yd, nd, _ = st.columns([1.5, 1.5, 4])
         with yd:
             if st.button("Yes, Delete 🗑️" if not is_rtl else "نعم، احذف نهائياً 🗑️", type="primary", use_container_width=True):
-                sync_delete_to_cloud(st.session_state.confirm_delete_id, selected_custody, current_user_data['name'])
+                sync_delete_to_cloud(st.session_state.confirm_delete_id, selected_custody, current_user_data.get('name', 'Admin'))
                 for inv in st.session_state.invoices_data:
                     if inv.get("serial_no") == st.session_state.confirm_delete_id: inv["delete"] = True
-                log_audit_event("DELETE", f"Deleted serial #{st.session_state.confirm_delete_id}", current_user_data['name'], current_user_data['name'])
+                log_audit_event("DELETE", f"Deleted serial #{st.session_state.confirm_delete_id}", current_user_data.get('name', 'Admin'), current_user_data.get('name', 'Admin'))
                 st.session_state.confirm_delete_id = None
                 st.toast("Deleted successfully!", icon="✅")
                 time.sleep(0.5); st.rerun()
