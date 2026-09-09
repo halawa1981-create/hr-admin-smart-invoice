@@ -134,7 +134,7 @@ def load_custodies_list():
         try:
             with open(CUSTODY_FILE, "r", encoding="utf-8") as f:
                 saved = json.load(f)
-                if isinstance(saved, list) and saved: return saved
+                if isinstance(saved, list): return saved
         except Exception: pass
     return list(DEFAULT_CUSTODIES)
 
@@ -364,12 +364,15 @@ def generate_managed_excel(header_data, invoice_rows, is_arabic=True):
     output.seek(0)
     return output
 
-# ─── محرك استخراج الذكاء الاصطناعي الذكي ───
+# ─── محرك استخراج الذكاء الاصطناعي الذكي (بالموديل المستقر المعتمد) ───
 def analyze_invoice_with_gemini(image, prompt_text, api_key, entry_type="منصرف"):
     img_str = optimize_image_for_upload(image, max_size=(1800, 1800), quality=90)
-    clean_key = api_key.strip().split("\n")[0].split(",")[0].strip()
+    clean_key = str(api_key).strip().replace('"', '').replace("'", '').split("\n")[0].split(",")[0].strip()
     
+    # قائمة الموديلات المعتمدة الأصلية (مع الموديل المستقر أولاً)
     candidate_models = [
+        "gemini-3.5-flash-lite",
+        "gemini-3.6-flash",
         "gemini-2.5-flash",
         "gemini-2.0-flash",
         "gemini-1.5-flash"
@@ -419,6 +422,7 @@ def analyze_invoice_with_gemini(image, prompt_text, api_key, entry_type="منص�
     }
 
     last_error_details = []
+    
     for model_name in candidate_models:
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={clean_key}"
         for attempt in range(2):
@@ -504,11 +508,12 @@ if "h_sec" not in st.session_state: st.session_state.h_sec = ""
 api_key = ""
 try:
     if hasattr(st, "secrets") and "GEMINI_API_KEY" in st.secrets:
-        api_key = st.secrets["GEMINI_API_KEY"]
+        api_key = str(st.secrets["GEMINI_API_KEY"]).strip().replace('"', '').replace("'", '')
 except Exception: pass
 if not api_key and os.path.exists(API_KEY_FILE):
     try:
-        with open(API_KEY_FILE, "r", encoding="utf-8") as f: api_key = f.read().strip()
+        with open(API_KEY_FILE, "r", encoding="utf-8") as f: 
+            api_key = f.read().strip().replace('"', '').replace("'", '')
     except Exception: pass
 
 # ═════════════════════════════════════════════════════════════════════════
@@ -986,7 +991,7 @@ selected_custody = col_cust.selectbox(t["custody_label"], avail_custodies, index
 
 if selected_custody == t["add_custody"] and can_manage:
     c_new1, c_new2 = col_cust.columns([2, 1])
-    new_c_name = c_new1.text_input("Custody File Name:" if not is_rtl else "اسم ملف العهدة الجديد:", placeholder="مثال: عهدة المرحلة الأولى")
+    new_c_name = c_new1.text_input("Custody File Name:" if not is_rtl else "اسم ملف العهدة الجديد:", placeholder="مثال: عهدة التشغيل الرئيسية")
     if c_new2.button("Save" if not is_rtl else "حفظ", type="primary"):
         if new_c_name and new_c_name.strip():
             c_clean = new_c_name.strip()
@@ -1362,7 +1367,7 @@ if st.session_state.active_tab == "records":
             td_cols[0].markdown(f"<div class='{c_class}'>{r.get('serial_no', idx+1)}</div>", unsafe_allow_html=True)
             td_cols[1].markdown(f"<div class='{c_class}'>{'📥 وارد' if is_inward else '🧾 منصرف'}</div>", unsafe_allow_html=True)
             td_cols[2].markdown(f"<div class='{c_class}' title='{r.get('custody_name', '')}'>{r.get('custody_name', '')}</div>", unsafe_allow_html=True)
-            td_cols[3].markdown(f"<div class='{c_class}'>{r.get('invoice_date', '')}</div>", unsafe_allow_html=True)
+            td_cols[3].markdown(f"<div class='{c_class}' title='{r.get('invoice_date', '')}'>{r.get('invoice_date', '')}</div>", unsafe_allow_html=True)
             td_cols[4].markdown(f"<div class='{c_class}'>{r.get('invoice_no', '')}</div>", unsafe_allow_html=True)
             td_cols[5].markdown(f"<div class='{c_class}'>{r.get('category', '')}</div>", unsafe_allow_html=True)
             td_cols[6].markdown(f"<div class='{c_class}' title='{r.get('description','')}'>{r.get('description', '')}</div>", unsafe_allow_html=True)
