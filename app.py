@@ -46,7 +46,9 @@ st.set_page_config(
 DEFAULT_DICT = "تصنيف عهد النثريات والمصروفات التشغيلية للمشاريع.\nالتأكد من استخراج الرقم الضريبي (15 رقم) وصافي الفاتورة قبل وبعد الضريبة بدقة."
 DEFAULT_CUSTODIES = []
 
-# معالجة آمنة لـ secrets لتجنب StreamlitSecretNotFoundError محلياً
+# الرابط السحابي لتطبيق HR Admin الحالي
+DEFAULT_APP_URL = "https://hr-app-smart-invoice-kx4r8eayr5zqp3j7faxzwq.streamlit.app"
+
 CLOUD_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyVEwrXLkg15ZdEweZ0-DMEWBAbUYvRfnHAA4kQm67v6LMuyaRqV1o-AeRBcqkPNsM9/exec"
 try:
     if hasattr(st, "secrets") and "CLOUD_WEB_APP_URL" in st.secrets:
@@ -451,21 +453,29 @@ def analyze_invoice_with_gemini(image, prompt_text, api_key, entry_type="منص�
     err_summary = " | ".join(last_error_details) if last_error_details else "لا يوجد استجابة من الخادم"
     raise Exception(f"تعذر استدعاء الموديلات المتاحة: {err_summary}")
 
+# ─── تنقية وضبط المستخدم المالك الوحيد (System Owner) ───
+PRIMARY_OWNER_EMAIL = "halawa1981@gmail.com"
+PRIMARY_OWNER_USER = {
+    "name": "م/ محمد حلاوة (System Owner)",
+    "password_hash": hash_password("Admin#2026"),
+    "role": "Admin",
+    "allowed_custodies": "All",
+    "must_change_password": False,
+    "phone": "+966"
+}
+
 def load_users_db():
-    default_users = {
-        "admin@hr-contech.com": {
-            "name": "HR System Administrator", "password_hash": hash_password("Admin#2026"), 
-            "role": "Super Admin", "allowed_custodies": "All", "must_change_password": False
-        }
-    }
+    users_data = {}
     if os.path.exists(USERS_FILE):
         try:
             with open(USERS_FILE, "r", encoding="utf-8") as f:
-                saved = json.load(f)
-                if isinstance(saved, dict):
-                    default_users.update(saved)
-        except Exception: pass
-    return default_users
+                users_data = json.load(f)
+        except Exception:
+            users_data = {}
+    
+    # ضمان وجود وتحديث حساب المالك دوماً
+    users_data[PRIMARY_OWNER_EMAIL] = PRIMARY_OWNER_USER
+    return users_data
 
 def save_users_db(users_data):
     try:
@@ -492,9 +502,9 @@ if "memory_unlocked" not in st.session_state: st.session_state.memory_unlocked =
 if "active_tab" not in st.session_state: st.session_state.active_tab = "records"
 if "confirm_delete_id" not in st.session_state: st.session_state.confirm_delete_id = None
 if "logged_in" not in st.session_state: st.session_state.logged_in = (st.query_params.get("session_auth") == "auth_valid_session")
-if "current_user" not in st.session_state: st.session_state.current_user = None
+if "current_user" not in st.session_state: st.session_state.current_user = PRIMARY_OWNER_EMAIL if st.session_state.logged_in else None
 
-# الترويسة العليا التفاعلية المصفاة
+# الترويسة العليا
 if "h_holder" not in st.session_state: st.session_state.h_holder = ""
 if "h_title" not in st.session_state: st.session_state.h_title = ""
 if "h_emp_id" not in st.session_state: st.session_state.h_emp_id = ""
@@ -728,7 +738,7 @@ div[data-testid="column"]:nth-child(2) button[kind="primary"] p { color: #FFFFFF
 </div>
 """, unsafe_allow_html=True)
         
-        login_email = st.text_input("Email Address", value="admin@hr-contech.com", key="auth_email_field", placeholder="name@company.com")
+        login_email = st.text_input("Email Address", value=PRIMARY_OWNER_EMAIL, key="auth_email_field", placeholder="name@company.com")
         login_password = st.text_input("Password", type="password", value="Admin#2026", key="auth_password_field", placeholder="••••••••••••")
         
         st.markdown("""
@@ -762,12 +772,10 @@ div[data-testid="column"]:nth-child(2) button[kind="primary"] p { color: #FFFFFF
     st.stop()
 
 # ─── التحقق من الصلاحيات والترجمة ───
-current_user_data = st.session_state.users_db.get(st.session_state.current_user, {
-    "name": "HR System Administrator", "role": "Super Admin", "allowed_custodies": "All", "must_change_password": False
-})
-user_role = current_user_data.get("role", "Accountant")
-is_super_admin = (user_role == "Super Admin")
-is_company_admin = (user_role == "Admin" or is_super_admin)
+current_user_data = st.session_state.users_db.get(st.session_state.current_user, PRIMARY_OWNER_USER)
+user_role = current_user_data.get("role", "Admin")
+is_super_admin = (user_role in ["Super Admin", "Admin"])
+is_company_admin = is_super_admin
 is_ceo = (user_role == "CEO")
 is_accountant = (user_role == "Accountant")
 
@@ -1000,7 +1008,7 @@ if selected_custody == t["add_custody"] and can_manage:
                 st.rerun()
 
 with col_user:
-    st.info(f"**{current_user_data.get('name', 'User')}** &bull; `{user_role}`")
+    st.info(f"**{current_user_data.get('name', 'م/ محمد حلاوة (System Owner)')}** &bull; `{user_role}`")
     b_u1, b_u2 = st.columns([1.2, 1])
     with b_u1:
         if can_manage and st.button(t["user_mgmt"], use_container_width=True):
@@ -1012,21 +1020,121 @@ with col_user:
             if "session_auth" in st.query_params: del st.query_params["session_auth"]
             st.rerun()
 
+# ═════════════════════════════════════════════════════════════════════════
+# ─── لوحة التحكم التفاعلية في المستخدمين ودعوات WhatsApp ───
+# ═════════════════════════════════════════════════════════════════════════
 if can_manage and st.session_state.show_user_mgmt:
     st.divider()
-    st.subheader("👥 User Management & Permissions" if not is_rtl else "👥 إدارة المستخدمين وصلاحيات العهد")
     
-    # ─── معالجة آمنة تماماً لجدول المستخدمين ───
-    users_table_data = []
-    for k, v in st.session_state.users_db.items():
-        if isinstance(v, dict):
-            users_table_data.append({
-                "Email": k,
-                "Name": v.get("name", "N/A"),
-                "Role": v.get("role", "Accountant"),
-                "Custodies": str(v.get("allowed_custodies", "All"))
+    # بطاقة الترويسة
+    st.markdown("""
+    <div style='background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); padding: 18px 24px; border-radius: 12px; border-left: 6px solid #FF5252; margin-bottom: 25px;'>
+        <h2 style='color: #FFFFFF; margin: 0; font-size: 22px; font-weight: 800;'>👥 لوحة التحكم في المستخدمين والصلاحيات</h2>
+        <p style='color: #94A3B8; margin: 5px 0 0 0; font-size: 13px;'>إدارة فرق العمل، تعيين صلاحيات العهد، وإرسال بيانات الدخول المباشرة عبر WhatsApp</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    with st.expander("➕ Invite New Team Member / إضافة عضو جديد ودعوته", expanded=True):
+        col_u1, col_u2 = st.columns(2)
+        new_u_email = col_u1.text_input("User Email :", placeholder="user@company.com", key="new_u_email")
+        new_u_role = col_u2.selectbox("Role :", ["Accountant", "Admin", "CEO", "Viewer"], index=0, key="new_u_role")
+        
+        col_u3, col_u4 = st.columns(2)
+        new_u_name = col_u3.text_input("Full Name :", placeholder="الاسم ثلاثي", key="new_u_name")
+        
+        all_c_choices = list(st.session_state.custodies_list)
+        new_u_custodies = col_u4.multiselect("Allowed Custodies :", all_c_choices, default=all_c_choices, key="new_u_cust")
+        
+        col_u5, col_u6 = st.columns(2)
+        app_access_url = col_u5.text_input("Platform Access URL :", value=DEFAULT_APP_URL, key="app_access_url")
+        new_u_phone = col_u6.text_input("WhatsApp Phone (e.g. +966 / +20) :", placeholder="+9665xxxxxxxx أو +201xxxxxxxxx", key="new_u_phone")
+        
+        auto_temp_pass = st.checkbox("Generate secure temp password", value=True, key="chk_auto_pass")
+        temp_pass_val = generate_temp_password(10) if auto_temp_pass else "User#2026"
+        
+        st.caption(f"🔑 Temporary Password generated: `{temp_pass_val}`")
+        
+        if st.button("🚀 Create Account & Generate Access Link", type="primary", use_container_width=True):
+            clean_email = new_u_email.strip().lower()
+            clean_name = new_u_name.strip()
+            clean_phone = re.sub(r'[^0-9\+]', '', new_u_phone.strip())
+            
+            if not clean_email or not clean_name:
+                st.error("⚠️ يرجى إدخال البريد الإلكتروني والاسم بالكامل.")
+            else:
+                st.session_state.users_db[clean_email] = {
+                    "name": clean_name,
+                    "password_hash": hash_password(temp_pass_val),
+                    "role": new_u_role,
+                    "allowed_custodies": new_u_custodies if new_u_custodies else "All",
+                    "must_change_password": True,
+                    "phone": clean_phone
+                }
+                save_users_db(st.session_state.users_db)
+                log_audit_event("CREATE_USER", f"Created user {clean_email} with role {new_u_role}", current_user_data.get('name', 'Admin'), current_user_data.get('name', 'Admin'))
+                st.success(f"✅ تم إنشاء حساب {clean_name} بنجاح وحفظ الصلاحيات!")
+                
+                # إعداد رسالة الواتساب الفورية
+                cust_summary = "جميع ملفات العهد" if not new_u_custodies else "، ".join(new_u_custodies)
+                wa_msg = f"""مرحباً بك {clean_name}،
+تم إنشاء حسابك بنجاح في منظومة إدارة العهد النثرية:
+🌐 رابط النظام: {app_access_url}
+📧 اسم المستخدم (الإيميل): {clean_email}
+🔑 كلمة المرور المؤقتة: {temp_pass_val}
+📂 العهد المصرح بها: {cust_summary}
+
+يرجى تسجيل الدخول والبدء في تسجيل وتدقيق العمليات."""
+                
+                encoded_msg = urllib.parse.quote(wa_msg)
+                phone_param = clean_phone.replace("+", "")
+                wa_direct_link = f"https://wa.me/{phone_param}?text={encoded_msg}" if phone_param else f"https://wa.me/?text={encoded_msg}"
+                
+                st.markdown(f"""
+                <div style='background: rgba(16, 185, 129, 0.1); border: 1.5px solid #10B981; border-radius: 10px; padding: 18px; margin-top: 15px;'>
+                    <h4 style='color: #10B981; margin: 0 0 10px 0;'>📲 إرسال الدعوة مباشرة للمستخدم:</h4>
+                    <p style='margin: 0 0 12px 0; color: #334155; font-size: 13px;'>اضغط الزر أدناه لفتح تطبيق WhatsApp وإرسال بيانات الدخول والروابط بضغطة زر واحدة:</p>
+                    <a href='{wa_direct_link}' target='_blank' style='display: inline-block; background-color: #25D366; color: white; padding: 10px 24px; border-radius: 8px; font-weight: bold; text-decoration: none; font-size: 14px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>
+                        💬 إرسال بيانات الدخول عبر WhatsApp
+                    </a>
+                </div>
+                """, unsafe_allow_html=True)
+
+    st.markdown("### 📋 المستخدمون النشطون في النظام")
+    
+    # تنقية عرض المستخدمين
+    table_rows = []
+    for em, info in list(st.session_state.users_db.items()):
+        if isinstance(info, dict):
+            c_val = info.get("allowed_custodies", "All")
+            cust_text = "All" if c_val == "All" else (", ".join(c_val) if isinstance(c_val, list) else str(c_val))
+            table_rows.append({
+                "Email": em,
+                "Name": info.get("name", "N/A"),
+                "Role": info.get("role", "Accountant"),
+                "Phone": info.get("phone", "N/A"),
+                "Custodies": cust_text
             })
-    st.dataframe(pd.DataFrame(users_table_data), use_container_width=True)
+    
+    u_df = pd.DataFrame(table_rows)
+    st.dataframe(u_df, use_container_width=True)
+    
+    # حذف مستخدم مع حماية حساب المالك الأصلي
+    col_del_u1, col_del_u2 = st.columns([3, 1])
+    deletable_users = [em for em in st.session_state.users_db.keys() if em.lower() != PRIMARY_OWNER_EMAIL.lower()]
+    if deletable_users:
+        user_to_delete = col_del_u1.selectbox("اختر مستخدماً لإلغاء تنشيطه:", deletable_users)
+        if col_del_u2.button("🗑️ حذف المستخدم", use_container_width=True):
+            del st.session_state.users_db[user_to_delete]
+            save_users_db(st.session_state.users_db)
+            log_audit_event("DELETE_USER", f"Removed user {user_to_delete}", current_user_data.get('name', 'Admin'), current_user_data.get('name', 'Admin'))
+            st.toast("تم حذف المستخدم بنجاح!", icon="✅")
+            time.sleep(0.5)
+            st.rerun()
+            
+    if st.button("⬅️ العودة لاستمارة العهدة الرئيسية", type="secondary"):
+        st.session_state.show_user_mgmt = False
+        st.rerun()
+        
     st.stop()
 
 st.divider()
