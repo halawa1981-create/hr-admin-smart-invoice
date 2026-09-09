@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Un-matt ConTech — Login</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    html, body {
+      width: 100%;
+      min-height: 100vh;
+      background-color: #050B14;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: #F8FAFC;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+    }
+
+    .top-bar {
+      width: 100%;
+      max-width: 1560px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #64748B;
+      font-size: 13px;
+      margin-bottom: 16px;
+      padding: 0 8px;
+    }
+
+    .top-badge {
+      background: #1E293B;
+      color: #38BDF8;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-weight: 800;
+      font-size: 11.5px;
+    }
+
+    .login-container {
+      width: 100%;
+      max-width: 1560px;
+      min-height: 720px;
+      display: flex;
+      border-radius: 24px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7);
+      background-color: #08111E;
+    }
+
+    /* الجانب الأيسر: لوحة الهوية */
+    .brand-panel {
+      flex: 0 0 62%;
+      background: radial-gradient(circle at 15% 15%, #132742 0%, #08111E 65%, #050B14 100%);
+      padding: 50px 55px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      position: relative;
+    }
+
+    .brand-title {
+      font-size: 28px;
+      font-weight: 800;
+      color: #FFFFFF;
+      line-height: 1.1;
+    }
+
+    .brand-title span {
+      color: #38BDF8;
+      font-weight: 600;
+    }
+
+    .brand-sub {
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #94A3B8;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    .system-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(14, 165, 233, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #E0F2FE;
+      margin: 20px 0;
+    }
+
+    .system-badge-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #38BDF8;
+      box-shadow: 0 0 10px #38BDF8;
+    }
+
+    .hero-headline {
+      font-size: 42px;
+      font-weight: 800;
+      line-height: 1.2;
+      color: #FFFFFF;
+      margin-bottom: 30px;
+    }
+
+    .hero-headline .highlight {
+      color: #38BDF8;
+    }
+
+    .pillars-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .pillar-card {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 16px 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .pillar-card.p-orange { border-top: 3.5px solid #F97316; }
+    .pillar-card.p-green { border-top: 3.5px solid #10B981; }
+    .pillar-card.p-cyan { border-top: 3.5px solid #0EA5E9; }
+
+    .graphic-box {
+      width: 100%;
+      height: 110px;
+      border-radius: 12px;
+      background: rgba(8, 14, 26, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+    }
+
+    .pillar-tag {
+      font-size: 10.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 4px;
+    }
+
+    .p-orange .pillar-tag { color: #FB923C; }
+    .p-green .pillar-tag { color: #34D399; }
+    .p-cyan .pillar-tag { color: #38BDF8; }
+
+    .pillar-title {
+      font-size: 14.5px;
+      font-weight: 800;
+      color: #F8FAFC;
+      line-height: 1.3;
+    }
+
+    .pillar-desc {
+      font-size: 11px;
+      color: #94A3B8;
+      margin-top: 4px;
+      line-height: 1.35;
+    }
+
+    /* الجانب الأيمن: كارت تسجيل الدخول */
+    .auth-panel {
+      flex: 0 0 38%;
+      background: #FFFFFF;
+      color: #0F172A;
+      padding: 60px 50px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .auth-heading {
+      font-size: 32px;
+      font-weight: 800;
+      color: #0F172A;
+      margin-bottom: 6px;
+    }
+
+    .auth-subheading {
+      font-size: 15px;
+      color: #64748B;
+      margin-bottom: 34px;
+    }
+
+    .form-group {
+      margin-bottom: 22px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #334155;
+      margin-bottom: 8px;
+    }
+
+    .form-input {
+      width: 100%;
+      height: 50px;
+      padding: 0 16px;
+      border: 1.5px solid #CBD5E1;
+      border-radius: 10px;
+      font-size: 15px;
+      color: #0F172A;
+      background: #F8FAFC;
+      outline: none;
+    }
+
+    .form-input:focus {
+      border-color: #0284C7;
+      background: #FFFFFF;
+    }
+
+    .form-options {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      margin-bottom: 28px;
+      color: #475569;
+    }
+
+    .remember-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .forgot-link {
+      color: #0284C7;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .signin-btn {
+      width: 100%;
+      height: 52px;
+      background: linear-gradient(135deg, #FF5252 0%, #E53935 100%);
+      border: none;
+      border-radius: 10px;
+      color: #FFFFFF;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 10px 25px -5px rgba(229, 57, 53, 0.45);
+      transition: transform 0.1s ease;
+    }
+
+    .signin-btn:active {
+      transform: scale(0.98);
+    }
+
+    .security-badge {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 12px;
+      color: #94A3B8;
+      font-weight: 600;
+      border-top: 1px solid #F1F5F9;
+      padding-top: 22px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="top-bar">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span class="top-badge">CONTECH VISUAL IDENTITY</span>
+      <span style="color: #94A3B8; font-weight: 700;">Un-matt ConTech — Unified Login Experience</span>
+    </div>
+    <div style="font-weight: 600;">Target: Enterprise SaaS & Field Web (1920x1080)</div>
+  </div>
+
+  <div class="login-container">
+    
+    <!-- الجانب الأيسر: لوحة الهوية والركائز الثلاث -->
+    <div class="brand-panel">
+      <div>
+        <div class="brand-title">Un-matt <span>ConTech</span></div>
+        <div class="brand-sub">AI Solutions &bull; Construction Technology</div>
+
+        <div class="system-badge">
+          <span class="system-badge-dot"></span>
+          Invoice Management System
+        </div>
+
+        <h1 class="hero-headline">
+          Turn invoices into<br>
+          <span class="highlight">controlled project data</span>
+        </h1>
+      </div>
+
+      <!-- الركائز الثلاث المطابقة للأصل -->
+      <div class="pillars-grid">
+        <!-- 1. EXTRACTION ENGINE -->
+        <div class="pillar-card p-orange">
+          <div class="graphic-box">
+            <svg width="100%" height="100%" viewBox="0 0 240 120" fill="none">
+              <rect x="75" y="16" width="68" height="88" rx="8" fill="#0C1322" stroke="#F97316" stroke-width="2" />
+              <line x1="86" y1="34" x2="132" y2="34" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+              <line x1="86" y1="46" x2="124" y2="46" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+              <line x1="86" y1="58" x2="132" y2="58" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+              <line x1="86" y1="70" x2="116" y2="70" stroke="#475569" stroke-width="2.5" stroke-linecap="round" />
+              <line x1="58" y1="52" x2="160" y2="52" stroke="#38BDF8" stroke-width="2.5" stroke-dasharray="3 3" />
+              <polygon points="56,52 64,48 64,56" fill="#38BDF8" />
+              <polygon points="162,52 154,48 154,56" fill="#38BDF8" />
+            </svg>
+          </div>
+          <div>
+            <div class="pillar-tag">EXTRACTION ENGINE</div>
+            <div class="pillar-title">Smart Data Extraction</div>
+            <div class="pillar-desc">Automated OCR parsing & dual textual verification.</div>
+          </div>
+        </div>
+
+        <!-- 2. AUTO COST CODING -->
+        <div class="pillar-card p-green">
+          <div class="graphic-box">
+            <svg width="100%" height="100%" viewBox="0 0 240 120" fill="none">
+              <circle cx="78" cy="60" r="32" stroke="#1E293B" stroke-width="12" />
+              <circle cx="78" cy="60" r="32" stroke="#10B981" stroke-width="12" stroke-dasharray="100 200" stroke-dashoffset="-45" stroke-linecap="round" />
+              <line x1="106" y1="42" x2="136" y2="34" stroke="#10B981" stroke-width="1.5" stroke-dasharray="2 2" />
+              <rect x="136" y="24" width="76" height="20" rx="4" fill="#06281E" stroke="#10B981" stroke-width="1.2" />
+              <text x="174" y="38" fill="#34D399" font-size="9" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">CBS : 01-MAT</text>
+              <line x1="108" y1="68" x2="136" y2="76" stroke="#10B981" stroke-width="1.5" stroke-dasharray="2 2" />
+              <rect x="136" y="66" width="76" height="20" rx="4" fill="#06281E" stroke="#10B981" stroke-width="1.2" />
+              <text x="174" y="80" fill="#34D399" font-size="9" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">GL : SUB-CON</text>
+            </svg>
+          </div>
+          <div>
+            <div class="pillar-tag">AUTO COST CODING</div>
+            <div class="pillar-title">Self Aggregation & Classification</div>
+            <div class="pillar-desc">Dynamic vendor mapping into controlled BOQ ledger.</div>
+          </div>
+        </div>
+
+        <!-- 3. EXECUTIVE INTELLIGENCE -->
+        <div class="pillar-card p-cyan">
+          <div class="graphic-box">
+            <svg width="100%" height="100%" viewBox="0 0 240 120" fill="none">
+              <rect x="52" y="70" width="14" height="30" rx="2" fill="#0284C7" />
+              <rect x="72" y="52" width="14" height="48" rx="2" fill="#0284C7" />
+              <rect x="92" y="36" width="14" height="64" rx="2" fill="#0284C7" />
+              <path d="M52 75 Q100 48 186 20" stroke="#F59E0B" stroke-width="2.5" fill="none" stroke-linecap="round" />
+              <circle cx="186" cy="20" r="4.5" fill="#F59E0B" />
+              <rect x="142" y="46" width="68" height="34" rx="6" fill="#082F49" stroke="#0284C7" stroke-width="1.2" />
+              <text x="176" y="59" fill="#E0F2FE" font-size="8.5" font-family="-apple-system, sans-serif" font-weight="800" text-anchor="middle">+ Cash Drift</text>
+              <text x="176" y="72" fill="#38BDF8" font-size="8" font-family="-apple-system, sans-serif" font-weight="700" text-anchor="middle">94% Efficiency</text>
+            </svg>
+          </div>
+          <div>
+            <div class="pillar-tag">EXECUTIVE INTELLIGENCE</div>
+            <div class="pillar-title">Expenses Analysis & Actionable Insights</div>
+            <div class="pillar-desc">Board-ready A3 KPIs, burn rate, and cost control.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- الجانب الأيمن: كارت تسجيل الدخول -->
+    <div class="auth-panel">
+      <div>
+        <div class="auth-heading">Welcome back</div>
+        <div class="auth-subheading">Sign in to your Un-matt workspace</div>
+
+        <form method="GET" action="/" target="_top">
+          <input type="hidden" name="session_auth" value="auth_valid_session">
+          <div class="form-group">
+            <label class="form-label" for="email">Email</label>
+            <input type="email" id="email" name="u" class="form-input" value="halawa1981@gmail.com" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="password">Password</label>
+            <input type="password" id="password" name="p" class="form-input" placeholder="••••••••••••" required>
+          </div>
+
+          <div class="form-options">
+            <label class="remember-label">
+              <input type="checkbox" checked style="accent-color: #0284C7; width: 16px; height: 16px;">
+              <span>Remember me</span>
+            </label>
+            <a href="#" class="forgot-link">Forgot password?</a>
+          </div>
+
+          <button type="submit" class="signin-btn">
+            <span>Sign in →</span>
+          </button>
+        </form>
+      </div>
+
+      <div class="security-badge">
+        <span>Enterprise Grade &bull; 256-bit SSL Security Protocol</span>
+      </div>
+    </div>
+
+  </div>
+
+</body>
+</html>

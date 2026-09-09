@@ -1,0 +1,55 @@
+{
+  "halawa1981@gmail.com": {
+    "name": "م/ محمد حلاوة (System Owner)",
+    "password_hash": "8adbc89ec18927353e3f805d44c2dad05a6a7aff1437cd746c195cf97a57a00b",
+    "role": "Admin",
+    "allowed_projects": "All",
+    "must_change_password": false
+  },
+  "admin@contech.com": {
+    "name": "مدير النظام المفوض (Company Admin)",
+    "password_hash": "b5af2beb9b7fd5aa4eb21b61925bd3856793e54e0a39052fbcfaf5b477fd07f3",
+    "role": "Admin",
+    "allowed_projects": "All",
+    "must_change_password": false
+  },
+  "ceo@contech.com": {
+    "name": "الرئيس التنفيذي (CEO)",
+    "password_hash": "9ea45a127c1f7f472d34382a392417a0a94221b70a5b597feb4071f363c2e16e",
+    "role": "CEO",
+    "allowed_projects": "All",
+    "must_change_password": false
+  },
+  "mohamedhassan0014@gmail.com": {
+    "name": "م/ محمد حسن",
+    "password_hash": "d4629b0c3b04f5c330279f1ec8d45ce0348b37263629fa35573b094e0de5ed2d",
+    "role": "Accountant",
+    "allowed_projects": [
+      "مشروع مول 6 أكتوبر"
+    ],
+    "must_change_password": true
+  },
+  "info@icanen.com": {
+    "name": "Khalid El-Deep",
+    "password_hash": "5994471abb01112afcc18159f6cc74b4f511b99806da59b3caf5a9c173cacfc5",
+    "role": "Admin",
+    "allowed_projects": "All",
+    "must_change_password": true
+  },
+  "halawa.cgc@gmail.com": {
+    "name": "M.halawa",
+    "password_hash": "f337acaf16a59eed0d48004d4d2077c0c29924ab6a171c9309dbd7cd02e17106",
+    "role": "Accountant",
+    "allowed_projects": [
+      "مشروع مول 6 أكتوبر"
+    ],
+    "must_change_password": true
+  },
+  "inf@icanen.com": {
+    "name": "Khalid El-Deep",
+    "password_hash": "5994471abb01112afcc18159f6cc74b4f511b99806da59b3caf5a9c173cacfc5",
+    "role": "Admin",
+    "allowed_projects": "All",
+    "must_change_password": true
+  }
+}

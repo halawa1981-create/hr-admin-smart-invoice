@@ -1,0 +1,18 @@
+# تجاهل المفاتيح السرية وبيانات البيئة
+api_key.txt
+.env
+.streamlit/secrets.toml
+
+# تجاهل ملفات البيانات المحلية الخاصة بالجلسات
+audit_log.json
+training_data.json
+custody_files.json
+projects.json
+dictionary.txt
+
+# تجاهل ملفات بايثون المؤقتة
+__pycache__/
+*.py[cod]
+*$py.class
+.vscode/
+.idea/
