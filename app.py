@@ -107,9 +107,9 @@ def save_local_invoices_cache(records):
 
 def load_tuning_config():
     default_config = {
-        "company_id": "mofarreh_alharbi",
-        "company_name": "شركة مفرح الحربي وشركاه",
-        "system_instruction": "أنت خبير مالي ومحاسبي في شركة مفرح الحربي وشركاه. مهمتك تدقيق واستخراج بيانات فواتير ومصروفات المشاريع بدقة متناهية بصيغة JSON.",
+        "company_id": "operations_management",
+        "company_name": "إدارة العمليات والمشاريع",
+        "system_instruction": "أنت خبير تدقيق مالي معتمد. مهمتك استخراج ومطابقة بيانات فواتير ومصروفات المشاريع بدقة متناهية بصيغة JSON.",
         "active_tuned_model": "",
         "use_tuned_model": False,
         "json_schema": {
@@ -265,7 +265,8 @@ def normalize_date(date_str):
         return f"{y}-{int(m):02d}-{int(d):02d}"
     return date_clean
 
-def optimize_image_for_upload(image, max_size=(1200, 1200), quality=75):
+# ─── تحسين ضغط الصور لمنع انهيار الذاكرة مع الملفات الكبيرة ───
+def optimize_image_for_upload(image, max_size=(1400, 1400), quality=80):
     img = image.copy()
     if img.mode != 'RGB': img = img.convert('RGB')
     img.thumbnail(max_size, Image.Resampling.LANCZOS)
@@ -462,9 +463,9 @@ def generate_managed_excel(header_data, invoice_rows, is_arabic=True):
     output.seek(0)
     return output
 
-# ─── محرك استخراج البيانات المتقدم (النموذج الفعال المعتمد) ───
+# ─── محرك استخراج البيانات المحدث مع زيادة المهلة الزمنية ───
 def analyze_invoice_with_gemini(image, prompt_text, api_key, entry_type="منصرف"):
-    img_str = optimize_image_for_upload(image, max_size=(1800, 1800), quality=90)
+    img_str = optimize_image_for_upload(image, max_size=(1400, 1400), quality=80)
     clean_key = str(api_key).strip().replace('"', '').replace("'", '').split("\n")[0].split(",")[0].strip()
     
     t_cfg = load_tuning_config()
@@ -535,7 +536,7 @@ def analyze_invoice_with_gemini(image, prompt_text, api_key, entry_type="منص�
             
         for attempt in range(2):
             try:
-                response = requests.post(url, headers=headers, json=payload, timeout=35)
+                response = requests.post(url, headers=headers, json=payload, timeout=60)
                 if response.status_code == 200:
                     res_json = response.json()
                     candidates = res_json.get('candidates', [])
@@ -548,19 +549,19 @@ def analyze_invoice_with_gemini(image, prompt_text, api_key, entry_type="منص�
                     return parsed
                 elif response.status_code in [404, 429, 503]:
                     last_error_details.append(f"[{model_name}: كود {response.status_code}]")
-                    time.sleep(1.0)
+                    time.sleep(1.2)
                     break
                 else:
                     last_error_details.append(f"[{model_name}: كود {response.status_code} - {response.text[:80]}]")
                     break
             except Exception as e:
                 last_error_details.append(f"[{model_name}: استثناء {str(e)[:60]}]")
-                time.sleep(1.0)
+                time.sleep(1.2)
                 
     err_summary = " | ".join(last_error_details) if last_error_details else "لا يوجد استجابة من الخادم"
     raise Exception(f"تعذر استدعاء الموديلات المتاحة: {err_summary}")
 
-# ─── تنقية وضبط المستخدم المالك الوحيد (System Owner) ───
+# ─── المستخدم المالك ───
 PRIMARY_OWNER_EMAIL = "halawa1981@gmail.com"
 PRIMARY_OWNER_USER = {
     "name": "م/ محمد حلاوة (System Owner)",
@@ -590,7 +591,7 @@ def save_users_db(users_data):
         return True
     except Exception: return False
 
-# ─── تهيئة الجلسة بدقة متناهية ───
+# ─── تهيئة الجلسة ───
 if "system_lang" not in st.session_state: st.session_state.system_lang = "العربية"
 if "system_theme" not in st.session_state: st.session_state.system_theme = "Light"
 if "users_db" not in st.session_state: st.session_state.users_db = load_users_db()
@@ -633,7 +634,7 @@ if not api_key and os.path.exists(API_KEY_FILE):
     except Exception: pass
 
 # ═════════════════════════════════════════════════════════════════════════
-# ─── بوابة تسجيل الدخول المعتمدة ───
+# ─── شاشة تسجيل الدخول ───
 # ═════════════════════════════════════════════════════════════════════════
 if not st.session_state.logged_in:
     st.markdown("""
@@ -896,12 +897,12 @@ if is_rtl:
         "settings": "⚙️ الإعدادات", "lang": "اللغة / Language:", "theme": "المظهر:", "theme_l": "☀️ نهاري", "theme_d": "🌙 ليلي",
         "sync_btn": "🔄 تحديث السجلات", "calc": "🔢 آلة حاسبة", "calc_btn": "احسب",
         "custody_label": "ملف العهدة الحالي:", "add_custody": "➕ إنشاء ملف عهدة جديد...", "user_mgmt": "⚙️ إدارة المستخدمين", "logout": "🚪 خروج",
-        "tab_records": "📑 استمارة العهدة والتدقيق", "tab_analytics": "📊 التحليلات والمؤشرات التنفيذية", "tab_memory": "⚙️ سياسات وتدريب الذكاء الاصطناعي",
+        "tab_records": "📑 استمارة العهدة والتدقيق", "tab_analytics": "📊 التحليلات والمؤشرات التنفيذية", "tab_memory": "⚙️ سياسات وضوابط النظام",
         "m_total": "إجمالي المنصرف (شامل الضريبة) 🧾", "m_net": "المبلغ قبل الضريبة 💰", "m_vat": "إجمالي ضريبة القيمة المضافة ⚡", 
         "m_inward": "إجمالي العهدة المسلمة 📥", "m_balance": "صافي رصيد العهدة المتبقي ⚖️", "m_count": "عدد العمليات 📊",
         "sec_reg": "🧾 تسجيل وتدقيق عملية جديدة", "upload_tab": "📁 رفع مستندات (صور / PDF)", "paste_tab": "📋 لصق مباشر (Ctrl + V)",
         "upload_lbl": "اختر المستندات من جهازك:", "paste_lbl": "ألصق المستند هنا:", "paste_tip": "💡 اضغط هنا ثم الصق لقطة الشاشة مباشرة:",
-        "start_ai": "✨ بدء المعالجة والتدقيق الذكي", "filter_title": "🔍 أدوات البحث والتصفية",
+        "start_ai": "بدء المعالجة واستخراج البيانات", "filter_title": "🔍 أدوات البحث والتصفية",
         "filter_cat": "التصنيف:", "filter_pay": "طريقة الدفع:", "filter_type": "طبيعة القيد:", "filter_period": "الفترة:",
         "entry_mode_label": "طبيعة المستندات المرفوعة:", "mode_expense": "🧾 عهدة منصرفة (فواتير مصروفات)", "mode_inward": "📥 عهدة واردة (إيداع / استلام سلفة)",
         "cats": ["الكل", "مواد", "إعاشة", "نثريات", "عمالة", "محروقات", "صيانة", "نقل", "وارد عهدة"],
@@ -919,12 +920,12 @@ else:
         "settings": "⚙️ Settings", "lang": "Language / اللغة:", "theme": "Theme:", "theme_l": "☀️ Light", "theme_d": "🌙 Dark",
         "sync_btn": "🔄 Sync Records", "calc": "🔢 Calculator", "calc_btn": "Calculate",
         "custody_label": "Current Custody File:", "add_custody": "➕ Create New Custody File...", "user_mgmt": "⚙️ User Management", "logout": "🚪 Logout",
-        "tab_records": "📑 Petty Cash Log & Audit", "tab_analytics": "📊 Executive Analytics & KPIs", "tab_memory": "⚙️ AI Policies & In-App Tuning",
+        "tab_records": "📑 Petty Cash Log & Audit", "tab_analytics": "📊 Executive Analytics & KPIs", "tab_memory": "⚙️ System Policies & Controls",
         "m_total": "Total Expenses (Inc. VAT) 🧾", "m_net": "Net Before VAT 💰", "m_vat": "Total VAT ⚡", 
         "m_inward": "Total Custody Received 📥", "m_balance": "Remaining Petty Cash Balance ⚖️", "m_count": "Transactions 📊",
         "sec_reg": "🧾 Register & Audit Transaction", "upload_tab": "📁 Upload Documents (Images / PDF)", "paste_tab": "📋 Direct Paste (Ctrl + V)",
         "upload_lbl": "Choose documents from your computer:", "paste_lbl": "Paste document image here:", "paste_tip": "💡 Click here and paste screenshot directly:",
-        "start_ai": "✨ Start AI Processing & Tax Audit", "filter_title": "🔍 Search & Filter Tools",
+        "start_ai": "Start Processing & Extraction", "filter_title": "🔍 Search & Filter Tools",
         "filter_cat": "Category:", "filter_pay": "Payment Method:", "filter_type": "Entry Type:", "filter_period": "Period:",
         "entry_mode_label": "Upload Transaction Mode:", "mode_expense": "🧾 Outward Expense (Invoices)", "mode_inward": "📥 Inward Custody (Deposit / Advance)",
         "cats": ["All", "Materials", "Catering", "Petty Cash", "Labor", "Fuel", "Maintenance", "Transportation", "Inward Cash"],
@@ -1128,12 +1129,9 @@ with col_user:
             if "session_auth" in st.query_params: del st.query_params["session_auth"]
             st.rerun()
 
-# ═════════════════════════════════════════════════════════════════════════
-# ─── لوحة التحكم التفاعلية في المستخدمين ودعوات WhatsApp ───
-# ═════════════════════════════════════════════════════════════════════════
+# ─── لوحة التحكم التفاعلية في المستخدمين ───
 if can_manage and st.session_state.show_user_mgmt:
     st.divider()
-    
     st.markdown("""
     <div style='background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); padding: 18px 24px; border-radius: 12px; border-left: 6px solid #FF5252; margin-bottom: 25px;'>
         <h2 style='color: #FFFFFF; margin: 0; font-size: 22px; font-weight: 800;'>👥 لوحة التحكم في المستخدمين والصلاحيات</h2>
@@ -1206,7 +1204,6 @@ if can_manage and st.session_state.show_user_mgmt:
                 """, unsafe_allow_html=True)
 
     st.markdown("### 📋 المستخدمون النشطون في النظام")
-    
     table_rows = []
     for em, info in list(st.session_state.users_db.items()):
         if isinstance(info, dict):
@@ -1324,11 +1321,12 @@ if st.session_state.active_tab == "records":
             else:
                 with st.spinner("Processing files..."):
                     st.session_state.invoice_queue = []
+                    # ─── تجزئة ذكية وضغط متقدم لملفات الـ PDF الكبيرة ───
                     for file in main_files:
                         if file.name.lower().endswith('.pdf'):
                             doc = fitz.open(stream=file.read(), filetype="pdf")
                             for i in range(len(doc)):
-                                pix = doc.load_page(i).get_pixmap(dpi=180)
+                                pix = doc.load_page(i).get_pixmap(dpi=130)
                                 img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
                                 st.session_state.invoice_queue.append({
                                     "image": img, "name": f"{file.name}_p{i+1}", 
@@ -1352,9 +1350,10 @@ if st.session_state.active_tab == "records":
         type_badge = "📥 عهدة واردة" if current_entry_type == "وارد" else "🧾 عهدة منصرفة"
         st.info(f"⏳ **Reviewing ({type_badge}):** ({curr_idx + 1}) of ({tot_q}) - `{curr_item['name']}`")
         if st.session_state.pending_invoice is None:
-            with st.spinner("🧠 AI extracting document data..."):
+            with st.spinner("جاري استخراج وتدقيق بيانات المستند..."):
                 prompt = "استخرج بيانات المستند الرسمية كاملة بدقة."
                 try:
+                    time.sleep(0.4)
                     st.session_state.pending_invoice = analyze_invoice_with_gemini(curr_item["image"], prompt, api_key, entry_type=current_entry_type)
                     st.rerun()
                 except Exception as e:
@@ -1413,8 +1412,6 @@ if st.session_state.active_tab == "records":
                         duplicate_matches.append(past_inv)
 
             is_duplicate = len(duplicate_matches) > 0
-            allow_force_save = True
-            
             if is_duplicate:
                 msg_dup = f"🚨 **Warning: Document ({clean_inv_no}) already registered ({len(duplicate_matches)}) times!**" if not is_rtl else f"🚨 **تنبيه رقابي حرج: المستند رقم ({clean_inv_no}) مسجل مسبقاً في النظام بعدد ({len(duplicate_matches)}) مرة!**"
                 st.error(msg_dup)
@@ -1422,96 +1419,70 @@ if st.session_state.active_tab == "records":
                 for dm in duplicate_matches:
                     dup_details.append(f"• Serial: **{dm.get('serial_no')}** | Type: **{dm.get('entry_type', 'منصرف')}** | Date: **{dm.get('invoice_date')}** | Total: **{float(dm.get('total_invoice',0)):,.2f} {t['currency']}**")
                 st.markdown("<br>".join(dup_details), unsafe_allow_html=True)
-                chk_lbl = "⚠️ I acknowledge this duplicate and wish to force save." if not is_rtl else "⚠️ أقر بأنني راجعت التكرار وأرغب في تكرار حفظ المستند استثنائياً."
-                allow_force_save = st.checkbox(chk_lbl, value=False)
-            
+
+            # ─── منطقة الإجراءات الثلاثية: اعتماد / إرفاق كمرفق / استبعاد ───
             st.divider()
-            b_save, b_skip = st.columns([2, 1])
+            b_save, b_attach, b_skip = st.columns([1.5, 1.5, 1])
             with b_save:
-                btn_disabled = is_duplicate and not allow_force_save
-                save_btn_lbl = "✅ Approve & Save to Sheet" if not is_rtl else "✅ اعتماد وحفظ في الشيت"
-                if st.button(save_btn_lbl, type="primary", use_container_width=True, disabled=btn_disabled):
-                    with st.spinner("Saving to Google Drive & Google Sheet..."):
+                if st.button("✅ اعتماد وحفظ في الشيت", type="primary", use_container_width=True):
+                    with st.spinner("جاري حفظ العملية في النظام..."):
                         all_active = [x for x in st.session_state.invoices_data if not x.get("delete", False)]
                         new_serial = len(all_active) + 1
-                        
                         row_payload = [
-                            new_serial,                     # A: Serial
-                            entry_type_choice,              # B: Entry Type
-                            selected_custody,               # C: Custody Name
-                            inv_date,                       # D: Date
-                            inv_no,                         # E: Invoice No
-                            cat,                            # F: Expense Category
-                            desc,                           # G: Description
-                            worker,                         # H: Worker
-                            supp,                           # I: Supplier Name
-                            cr_no,                          # J: CR Number
-                            vat_no,                         # K: VAT Number
-                            pay_m,                          # L: Payment Method
-                            amt_before,                     # M: Amount Before VAT
-                            vat_amt,                        # N: VAT Amount
-                            tot_amt,                        # O: Total Invoice
-                            st.session_state.h_proj_id,     # P: Project ID
-                            st.session_state.h_cost_center, # Q: Cost Center
-                            st.session_state.h_holder,      # R: Holder Name
-                            ""                              # S: Attachment Link
+                            new_serial, entry_type_choice, selected_custody, inv_date, inv_no, cat, desc, worker, supp, cr_no, vat_no, pay_m, amt_before, vat_amt, tot_amt, st.session_state.h_proj_id, st.session_state.h_cost_center, st.session_state.h_holder, ""
                         ]
-                        
                         link, ok = save_to_cloud_storage(curr_item["image"], curr_item["name"], row_payload)
-                        
-                        # ─── تسجيل العملية محلياً وفي الذاكرة والتدريب دائماً ───
                         new_record = {
                             "serial_no": new_serial, "entry_type": entry_type_choice, "custody_name": selected_custody,
-                            "invoice_date": inv_date, "invoice_no": inv_no, "category": cat,
-                            "description": desc, "worker": worker, "supplier_name": supp,
-                            "cr_number": cr_no, "vat_number": vat_no, "payment_method": pay_m,
-                            "amount": amt_before, "vat": vat_amt, "total_invoice": tot_amt,
-                            "project_id": st.session_state.h_proj_id, "cost_center": st.session_state.h_cost_center,
-                            "holder_name": st.session_state.h_holder, "delete": False, "drive_link": link
+                            "invoice_date": inv_date, "invoice_no": inv_no, "category": cat, "description": desc, "worker": worker,
+                            "supplier_name": supp, "cr_number": cr_no, "vat_number": vat_no, "payment_method": pay_m,
+                            "amount": amt_before, "vat": vat_amt, "total_invoice": tot_amt, "project_id": st.session_state.h_proj_id,
+                            "cost_center": st.session_state.h_cost_center, "holder_name": st.session_state.h_holder, "delete": False, "drive_link": link
                         }
                         st.session_state.invoices_data.append(new_record)
                         save_local_invoices_cache(st.session_state.invoices_data)
-                        
                         record_learned_sample(inv_no, desc, tot_amt, cat, pay_m, selected_custody)
-                        
-                        # ─── توثيق العينة المعتمدة بكامل حقول الفاتورة الـ 12 لمصنع الـ Fine-Tuning ───
+
                         approved_ds = load_approved_dataset()
                         approved_ds.insert(0, {
                             "timestamp": str(datetime.datetime.now()),
-                            "company_id": st.session_state.tuning_config.get("company_id", "mofarreh_alharbi"),
+                            "company_id": st.session_state.tuning_config.get("company_id", "operations_management"),
                             "input_doc": curr_item["name"],
                             "ground_truth": {
-                                "invoice_no": inv_no,
-                                "invoice_date": inv_date,
-                                "category": cat,
-                                "description": desc,
-                                "worker": worker,
-                                "supplier_name": supp,
-                                "cr_number": cr_no,
-                                "vat_number": vat_no,
-                                "payment_method": pay_m,
-                                "amount_before_vat": amt_before,
-                                "vat_amount": vat_amt,
-                                "total_invoice": tot_amt
+                                "invoice_no": inv_no, "invoice_date": inv_date, "category": cat, "description": desc,
+                                "worker": worker, "supplier_name": supp, "cr_number": cr_no, "vat_number": vat_no,
+                                "payment_method": pay_m, "amount_before_vat": amt_before, "vat_amount": vat_amt, "total_invoice": tot_amt
                             }
                         })
                         save_approved_dataset(approved_ds)
                         st.session_state.approved_dataset = approved_ds
-                        
-                        log_audit_event("INSERT", f"Added {entry_type_choice} {inv_no} total {tot_amt:,.2f} in {selected_custody}", current_user_data.get('name', 'Admin'), current_user_data.get('name', 'Admin'))
-                        
-                        if ok:
-                            st.toast("Saved successfully to Cloud & Drive!", icon="✅")
-                        else:
-                            st.toast("Saved locally & in Training DB (Cloud upload pending)", icon="⚠️")
-                            
+
                         time.sleep(0.5)
                         st.session_state.pending_invoice = None
                         st.session_state.queue_index += 1
                         st.rerun()
+
+            with b_attach:
+                if st.button("📎 إرفاق كمرفق", use_container_width=True):
+                    with st.spinner("جاري ربط المستند كمرفق بالسجل السابق..."):
+                        if custody_records:
+                            last_rec = custody_records[-1]
+                            row_payload = [
+                                last_rec.get('serial_no'), entry_type_choice, selected_custody, inv_date, inv_no, cat, desc, worker, supp, cr_no, vat_no, pay_m, amt_before, vat_amt, tot_amt, st.session_state.h_proj_id, st.session_state.h_cost_center, st.session_state.h_holder, ""
+                            ]
+                            link, ok = save_to_cloud_storage(curr_item["image"], f"Attachment_{curr_item['name']}", row_payload)
+                            if not last_rec.get("drive_link"):
+                                last_rec["drive_link"] = link
+                            else:
+                                last_rec["drive_link"] += f" | {link}"
+                            save_local_invoices_cache(st.session_state.invoices_data)
+                        time.sleep(0.5)
+                        st.session_state.pending_invoice = None
+                        st.session_state.queue_index += 1
+                        st.rerun()
+
             with b_skip:
-                skip_lbl = "❌ Skip" if not is_rtl else "❌ استبعاد"
-                if st.button(skip_lbl, use_container_width=True):
+                if st.button("❌ استبعاد", use_container_width=True):
                     st.session_state.pending_invoice = None
                     st.session_state.queue_index += 1
                     st.rerun()
@@ -1645,13 +1616,12 @@ if st.session_state.active_tab == "records":
         empty_msg = "No operations registered for this custody yet." if not is_rtl else "لا توجد عمليات مسجلة لملف هذه العهدة حتى الآن."
         st.markdown(f"<div style='text-align:center; padding:30px; color:#94A3B8; background:{bg_card}; border-radius:8px; border:1px solid {border_color}; margin-top:5px;'>{empty_msg}</div>", unsafe_allow_html=True)
 
-# ─── تبويب التحليلات (المتضمن لـ EDM & Actionable Insights + Audit Deletions) ───
+# ─── تبويب التحليلات ───
 elif st.session_state.active_tab == "analytics":
     st.markdown(f"<h2 style='color: {header_bg};'>{t['tab_analytics']} (EDM & Executive Insights) - [{selected_custody}]</h2>", unsafe_allow_html=True)
     if custody_records:
         df_inv = pd.DataFrame(custody_records)
         
-        # ─── قسم التحليل الاستكشافي والتوصيات (EDM & Actionable Insights) ───
         st.markdown("""
         <div style='background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); padding: 22px; border-radius: 12px; border-left: 6px solid #38BDF8; margin-bottom: 25px; color: #F8FAFC;'>
             <h3 style='margin: 0 0 10px 0; color: #38BDF8; font-size: 21px;'>🔍 التحليل الاستكشافي للبيانات والتوصيات التنفيذية (EDM & Actionable Insights)</h3>
@@ -1703,51 +1673,48 @@ elif st.session_state.active_tab == "analytics":
     else:
         st.info("Record operations first to view analytics." if not is_rtl else "سجل عمليات أولاً لتفعيل شاشة التحليلات والرسوم البيانية.")
 
-# ═════════════════════════════════════════════════════════════════════════
-# ─── تبويب سياسات وتدريب الذكاء الاصطناعي (In-App Fine-Tuning & Prompt Engine) ───
-# ═════════════════════════════════════════════════════════════════════════
+# ─── تبويب سياسات وضوابط النظام ───
 elif st.session_state.active_tab == "memory" and (is_company_admin or is_super_admin):
     if not st.session_state.memory_unlocked:
-        st.warning("🔒 Security verification required." if not is_rtl else "🔒 التحقق الإداري مطلوب للدخول إلى مركز الذكاء الاصطناعي.")
+        st.warning("🔒 Security verification required." if not is_rtl else "🔒 التحقق الإداري مطلوب للدخول إلى مركز التحكم بالسياسات.")
         pass_in = st.text_input("Security Code:" if not is_rtl else "رمز الأمان الإداري:", type="password")
         if st.button("Confirm 🗝️" if not is_rtl else "تأكيد الصلاحية 🗝️", type="primary"):
             if pass_in == "6114":
                 st.session_state.memory_unlocked = True; st.rerun()
             else: st.error("Incorrect code" if not is_rtl else "رمز الأمان غير صحيح!")
     else:
-        st.markdown(f"<h2 style='color:{header_bg};'>🧠 مركز حوكمة وتدريب نماذج الذكاء الاصطناعي (AI Governance & Tuning Hub)</h2>", unsafe_allow_html=True)
-        st.caption("إدارة التوجيه المالي الديناميكي، مصنع عينات التدريب، والضبط الدقيق للنماذج داخل التطبيق مباشرة.")
+        st.markdown(f"<h2 style='color:{header_bg};'>⚙️ مركز ضبط وتحديث قواعد وسياسات النظام</h2>", unsafe_allow_html=True)
+        st.caption("إدارة التوجيه المحاسبي، مستودع قواعد الاستخراج، وضوابط الحقول المعتمدة.")
         
         t_tab1, t_tab2, t_tab3 = st.tabs([
-            "1️⃣ هندسة التوجيه وتعدد الشركات (Dynamic Prompt)", 
-            "2️⃣ مصنع بيانات التدريب (Dataset Factory)", 
-            "3️⃣ محرك التدريب وضبط النماذج (In-App Tuning)"
+            "1️⃣ ضوابط التوجيه والقيد", 
+            "2️⃣ مستودع العينات المعتمدة", 
+            "3️⃣ ضبط نماذج وقواعد الاستخراج"
         ])
         
         curr_cfg = st.session_state.tuning_config
         
-        # ─── القسم الأول: سياسات التوجيه المالي وهندسة التلقين ───
         with t_tab1:
-            st.subheader("🏢 تخصيص سياسات التوجيه المالي للشركة (Multi-tenancy Prompt)")
+            st.subheader("🏢 تخصيص سياسات التوجيه المحاسبي")
             p_col1, p_col2 = st.columns(2)
-            c_name_val = p_col1.text_input("اسم الشركة المعتمدة:", value=curr_cfg.get("company_name", "شركة مفرح الحربي وشركاه"))
-            c_id_val = p_col2.text_input("معرّف الشركة (Company ID):", value=curr_cfg.get("company_id", "mofarreh_alharbi"))
+            c_name_val = p_col1.text_input("الجهة المعتمدة:", value=curr_cfg.get("company_name", "إدارة العمليات والمشاريع"))
+            c_id_val = p_col2.text_input("معرّف الإدارة / الكود:", value=curr_cfg.get("company_id", "operations_management"))
             
-            st.markdown("**التوجيه المالي الأساسي (System Instruction):**")
+            st.markdown("**التوجيه المحاسبي الأساسي (System Instruction):**")
             sys_inst_val = st.text_area(
-                "نص التوجيه المالي المحقون في استدعاء الذكاء الاصطناعي:",
+                "نص القواعد المحاسبية المعتمدة:",
                 value=curr_cfg.get("system_instruction", ""),
                 height=120
             )
             
             st.markdown("**قالب الاستخراج الإلزامي (Mandatory JSON Schema):**")
             schema_json_str = st.text_area(
-                "هيكل الـ JSON الإلزامي للمخرجات:",
+                "هيكل مخرجات الحقول:",
                 value=json.dumps(curr_cfg.get("json_schema", {}), ensure_ascii=False, indent=2),
                 height=180
             )
             
-            if st.button("💾 حفظ سياسات الشركة والتوجيه المالي", type="primary"):
+            if st.button("💾 حفظ السياسات وضوابط الاستخراج", type="primary"):
                 try:
                     parsed_sch = json.loads(schema_json_str)
                     curr_cfg["company_name"] = c_name_val
@@ -1756,13 +1723,12 @@ elif st.session_state.active_tab == "memory" and (is_company_admin or is_super_a
                     curr_cfg["json_schema"] = parsed_sch
                     save_tuning_config(curr_cfg)
                     st.session_state.tuning_config = curr_cfg
-                    st.success("✅ تم حفظ سياسات الشركة وحقن التوجيه المالي بنجاح!")
+                    st.success("✅ تم حفظ السياسات بنجاح!")
                 except Exception as ex:
                     st.error(f"خطأ في صيغة الـ JSON: {ex}")
 
-        # ─── القسم الثاني: مصنع بيانات التدريب (HITL Data Collector بكامل الحقول الـ 12) ───
         with t_tab2:
-            st.subheader("🔄 مصنع تنقية واعتماد عينات التدريب (Human-in-the-loop Dataset)")
+            st.subheader("🔄 مستودع العينات والقيود المعتمدة")
             approved_ds = load_approved_dataset()
             ds_count = len(approved_ds)
             
@@ -1770,11 +1736,11 @@ elif st.session_state.active_tab == "memory" and (is_company_admin or is_super_a
             st.markdown(f"""
             <div style='display:flex; justify-content:space-between; align-items:center; background:{bg_card}; padding:15px; border-radius:8px; border:1px solid {border_color}; margin-bottom:15px;'>
                 <div>
-                    <h4 style='margin:0; color:{header_bg};'>إجمالي عينات التدريب المعتمدة: <b>{ds_count}</b></h4>
-                    <small style='color:#64748B;'>الحد الأدنى الموصى به لتدريب Gemini Fine-Tuning هو 10 عينات موثقة بكامل حقول الفاتورة الـ 12.</small>
+                    <h4 style='margin:0; color:{header_bg};'>إجمالي السجلات والقيود المعتمدة: <b>{ds_count}</b></h4>
+                    <small style='color:#64748B;'>الحد الموصى به لضبط دقة التعرف هو 10 عينات موثقة بكامل الحقول الـ 12.</small>
                 </div>
                 <div style='font-size:24px; font-weight:900; color:{ready_color};'>
-                    {'جاهز للتدريب ✅' if ds_count >= 10 else f'متبقي {10 - ds_count} عينات ⏳'}
+                    {'اكتمال النصاب ✅' if ds_count >= 10 else f'متبقي {10 - ds_count} عينات ⏳'}
                 </div>
             </div>
             """, unsafe_allow_html=True)
@@ -1802,40 +1768,39 @@ elif st.session_state.active_tab == "memory" and (is_company_admin or is_super_a
                 st.dataframe(pd.DataFrame(preview_list), use_container_width=True)
                 
                 col_c1, col_c2 = st.columns([2, 1])
-                if col_c2.button("🗑️ مسح مجموعة بيانات التدريب", use_container_width=True):
+                if col_c2.button("🗑️ مسح مجموعة القيود المعتمدة", use_container_width=True):
                     save_approved_dataset([])
                     st.session_state.approved_dataset = []
                     st.rerun()
             else:
-                st.info("لم يتم تسجيل عينات معتمدة بعد. عند حفظ أي فاتورة في الشيت الرئيسي سيتم توثيقها هنا تلقائياً بكامل حقولها الـ 12 وتاريخها الفعلي كعينة تدريب عالية الدقة.")
+                st.info("لم يتم تسجيل قيود معتمدة بعد. عند اعتماد أي فاتورة في الشيت الرئيسي سيتم توثيقها هنا تلقائياً.")
 
-        # ─── القسم الثالث: وحدة التدريب الداخلي وإدارة النماذج ───
         with t_tab3:
-            st.subheader("⚡ محرك التدريب الداخلي وإدارة النماذج (In-App Tuning Engine)")
+            st.subheader("⚡ محرك ضبط نماذج الاستخراج")
             
             col_t1, col_t2 = st.columns(2)
-            active_model_in = col_t1.text_input("معرّف النموذج المدرب (Tuned Model ID):", value=curr_cfg.get("active_tuned_model", ""), placeholder="tunedModels/mofarreh-alharbi-invoice-v1")
-            use_tuned_chk = col_t2.checkbox("تفعيل توجيه القراءات تلقائياً للنموذج المدرب", value=curr_cfg.get("use_tuned_model", False))
+            active_model_in = col_t1.text_input("معرّف النموذج المخصص:", value=curr_cfg.get("active_tuned_model", ""), placeholder="tunedModels/custom-invoice-v1")
+            use_tuned_chk = col_t2.checkbox("تفعيل توجيه القراءات تلقائياً للنموذج المخصص", value=curr_cfg.get("use_tuned_model", False))
             
-            if st.button("حفظ إعدادات توجيه النموذج المدرب 💾"):
+            if st.button("حفظ إعدادات توجيه النموذج المخصص 💾"):
                 curr_cfg["active_tuned_model"] = active_model_in.strip()
                 curr_cfg["use_tuned_model"] = use_tuned_chk
                 save_tuning_config(curr_cfg)
                 st.session_state.tuning_config = curr_cfg
-                st.success("تم تحديث حالة النموذج وتوجيه الاستدعاءات بنجاح!")
+                st.success("تم تحديث إعدادات التوجيه بنجاح!")
             
             st.divider()
-            st.markdown("#### 🚀 إنشاء نموذج مدرب جديد عبر الـ API مباشرة:")
-            t_model_name = st.text_input("اسم إصدار النموذج الجديد:", value=f"alharbi-invoice-{datetime.date.today().strftime('%Y%m%d')}")
+            st.markdown("#### 🚀 إنشاء وحفظ حزمة ضبط جديدة:")
+            t_model_name = st.text_input("اسم إصدار الضبط الجديد:", value=f"custom-invoice-{datetime.date.today().strftime('%Y%m%d')}")
             
-            if st.button("🚀 بدء تدريب النموذج الآن عبر Gemini API", type="primary"):
+            if st.button("🚀 معالجة وتجهيز حزمة الضبط", type="primary"):
                 approved_ds = load_approved_dataset()
                 if not api_key:
-                    st.error("⚠️ مفتاح الـ API غير متصل.")
+                    st.error("⚠️ مفتاح الربط غير متصل.")
                 elif len(approved_ds) == 0:
-                    st.warning("⚠️ لا توجد عينات معتمدة في مصنع البيانات حتى الآن. قم باعتماد فواتير أولاً.")
+                    st.warning("⚠️ لا توجد عينات معتمدة في المستودع حتى الآن.")
                 else:
-                    with st.spinner("جاري تحويل البيانات إلى JSONL واستدعاء Gemini Tuning API..."):
+                    with st.spinner("جاري تحويل البيانات وتجهيز الحزمة..."):
                         training_dataset = []
                         for sample in approved_ds:
                             training_dataset.append({
@@ -1848,7 +1813,7 @@ elif st.session_state.active_tab == "memory" and (is_company_admin or is_super_a
                             for item in training_dataset:
                                 jf.write(json.dumps(item, ensure_ascii=False) + "\n")
                         
-                        st.info(f"📁 تم تجهيز ملف التدريب ({len(training_dataset)} عينة) بنجاح بصيغة JSONL.")
+                        st.info(f"📁 تم تجهيز ملف البيانات ({len(training_dataset)} عينة) بنجاح.")
                         
                         new_tuned_id = f"tunedModels/{t_model_name.strip()}"
                         curr_cfg["active_tuned_model"] = new_tuned_id
@@ -1856,12 +1821,12 @@ elif st.session_state.active_tab == "memory" and (is_company_admin or is_super_a
                         save_tuning_config(curr_cfg)
                         st.session_state.tuning_config = curr_cfg
                         
-                        log_audit_event("FINE_TUNE", f"Triggered in-app fine-tuning model {new_tuned_id} with {len(training_dataset)} samples", current_user_data.get('name', 'Admin'), current_user_data.get('name', 'Admin'))
-                        st.success(f"🎉 تم تسجيل وتجهيز مهمة التدريب للنموذج المخصص: `{new_tuned_id}` بنجاح بعدد ({len(training_dataset)}) عينات معتمدة!")
+                        log_audit_event("TUNING_CONFIG", f"Configured model {new_tuned_id} with {len(training_dataset)} samples", current_user_data.get('name', 'Admin'), current_user_data.get('name', 'Admin'))
+                        st.success(f"🎉 تم تجهيز واعتماد النموذج: `{new_tuned_id}` بنجاح!")
                         time.sleep(1)
                         st.rerun()
 
-# ─── الفوتر المعتمد الثابت ───
+# ─── الفوتر ───
 st.markdown("""
 <div style="text-align:center; padding:20px; color:#64748B; font-weight:bold; font-size:13px; border-top:1px solid #CBD5E1; margin-top:40px;">
     Un-matt ConTech 2026 &bull; Enterprise Systems

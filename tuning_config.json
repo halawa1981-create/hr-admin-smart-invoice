@@ -2,7 +2,7 @@
   "company_id": "mofarreh_alharbi",
   "company_name": "شركة مفرح الحربي وشركاه",
   "system_instruction": "أنت خبير مالي ومحاسبي في شركة مفرح الحربي وشركاه. مهمتك تدقيق واستخراج بيانات فواتير ومصروفات المشاريع بدقة متناهية بصيغة JSON.",
-  "active_tuned_model": "tunedModels/alharbi-invoice-20260909",
+  "active_tuned_model": "tunedModels/alharbi-invoice-20260910",
   "use_tuned_model": true,
   "json_schema": {
     "invoice_no": "رقم الفاتورة المطبوع",
