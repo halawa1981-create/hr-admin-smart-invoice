@@ -26,8 +26,13 @@ DICT_FILE = os.path.join(BASE_DIR, "dictionary.txt")
 CUSTODY_FILE = os.path.join(BASE_DIR, "custody_files.json")
 USERS_FILE = os.path.join(BASE_DIR, "users.json")
 TRAINING_FILE = os.path.join(BASE_DIR, "training_data.json")
+APPROVED_DATASET_FILE = os.path.join(BASE_DIR, "approved_dataset.json")
+TUNING_CONFIG_FILE = os.path.join(BASE_DIR, "tuning_config.json")
 AUDIT_LOG_FILE = os.path.join(BASE_DIR, "audit_log.json")
 API_KEY_FILE = os.path.join(BASE_DIR, "api_key.txt")
+LOCAL_INVOICES_CACHE = os.path.join(BASE_DIR, "local_invoices_cache.json")
+
+DRIVE_FOLDER_ID = "1lluuhfnz-qBNeZ0JdT6FXr7F1Y6FKDfk"
 
 NEW_BRAND_LOGO = None
 for fname in ["logo.PNG", "unmatt_logo.jpeg", "unmatt_logo.png", "anmatt_logo.png"]:
@@ -45,8 +50,6 @@ st.set_page_config(
 
 DEFAULT_DICT = "تصنيف عهد النثريات والمصروفات التشغيلية للمشاريع.\nالتأكد من استخراج الرقم الضريبي (15 رقم) وصافي الفاتورة قبل وبعد الضريبة بدقة."
 DEFAULT_CUSTODIES = []
-
-# الرابط السحابي لتطبيق HR Admin الحالي
 DEFAULT_APP_URL = "https://hr-app-smart-invoice-kx4r8eayr5zqp3j7faxzwq.streamlit.app"
 
 CLOUD_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyVEwrXLkg15ZdEweZ0-DMEWBAbUYvRfnHAA4kQm67v6LMuyaRqV1o-AeRBcqkPNsM9/exec"
@@ -85,6 +88,62 @@ def log_audit_event(action_type, details, user_email, user_name):
             f.flush(); os.fsync(f.fileno())
     except Exception: pass
 
+def load_local_invoices_cache():
+    if os.path.exists(LOCAL_INVOICES_CACHE):
+        try:
+            with open(LOCAL_INVOICES_CACHE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, list): return data
+        except Exception: pass
+    return []
+
+def save_local_invoices_cache(records):
+    try:
+        with open(LOCAL_INVOICES_CACHE, "w", encoding="utf-8") as f:
+            json.dump(records, f, ensure_ascii=False, indent=2)
+            f.flush(); os.fsync(f.fileno())
+        return True
+    except Exception: return False
+
+def load_tuning_config():
+    default_config = {
+        "company_id": "mofarreh_alharbi",
+        "company_name": "شركة مفرح الحربي وشركاه",
+        "system_instruction": "أنت خبير مالي ومحاسبي في شركة مفرح الحربي وشركاه. مهمتك تدقيق واستخراج بيانات فواتير ومصروفات المشاريع بدقة متناهية بصيغة JSON.",
+        "active_tuned_model": "",
+        "use_tuned_model": False,
+        "json_schema": {
+            "invoice_no": "رقم الفاتورة المطبوع",
+            "invoice_date": "YYYY-MM-DD",
+            "category": "تصنيف المصروف",
+            "description": "بيان المصروف بالتفصيل",
+            "worker": "اسم المستلم أو العامل",
+            "supplier_name": "اسم المورد أو المحل",
+            "cr_number": "رقم السجل التجاري",
+            "vat_number": "الرقم الضريبي (15 رقم)",
+            "payment_method": "طريقة الدفع",
+            "amount_before_vat": 0.0,
+            "vat_amount": 0.0,
+            "total_invoice": 0.0
+        }
+    }
+    if os.path.exists(TUNING_CONFIG_FILE):
+        try:
+            with open(TUNING_CONFIG_FILE, "r", encoding="utf-8") as f:
+                saved = json.load(f)
+                if isinstance(saved, dict):
+                    default_config.update(saved)
+        except Exception: pass
+    return default_config
+
+def save_tuning_config(cfg):
+    try:
+        with open(TUNING_CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, ensure_ascii=False, indent=2)
+            f.flush(); os.fsync(f.fileno())
+        return True
+    except Exception: return False
+
 def load_training_db():
     if os.path.exists(TRAINING_FILE):
         try:
@@ -98,6 +157,23 @@ def save_training_db(training_list):
     try:
         with open(TRAINING_FILE, "w", encoding="utf-8") as f:
             json.dump(training_list, f, ensure_ascii=False, indent=2)
+            f.flush(); os.fsync(f.fileno())
+        return True
+    except Exception: return False
+
+def load_approved_dataset():
+    if os.path.exists(APPROVED_DATASET_FILE):
+        try:
+            with open(APPROVED_DATASET_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, list): return data
+        except Exception: return []
+    return []
+
+def save_approved_dataset(dataset_list):
+    try:
+        with open(APPROVED_DATASET_FILE, "w", encoding="utf-8") as f:
+            json.dump(dataset_list, f, ensure_ascii=False, indent=2)
             f.flush(); os.fsync(f.fileno())
         return True
     except Exception: return False
@@ -189,7 +265,7 @@ def normalize_date(date_str):
         return f"{y}-{int(m):02d}-{int(d):02d}"
     return date_clean
 
-def optimize_image_for_upload(image, max_size=(1800, 1800), quality=90):
+def optimize_image_for_upload(image, max_size=(1200, 1200), quality=75):
     img = image.copy()
     if img.mode != 'RGB': img = img.convert('RGB')
     img.thumbnail(max_size, Image.Resampling.LANCZOS)
@@ -198,13 +274,13 @@ def optimize_image_for_upload(image, max_size=(1800, 1800), quality=90):
     return base64.b64encode(buffer.getvalue()).decode("utf-8")
 
 def load_cloud_records():
+    cloud_records = []
     try:
         response = requests.get(CLOUD_WEB_APP_URL, timeout=15)
         if response.status_code == 200:
             res_json = response.json()
             if res_json.get("status") == "success":
                 records = res_json.get("records", [])
-                valid_records = []
                 for r in records:
                     is_del = str(r.get("delete", "False")).strip().lower() in ["true", "1", "نعم"]
                     if not is_del:
@@ -212,10 +288,21 @@ def load_cloud_records():
                         r["invoice_date"] = normalize_date(r.get("invoice_date", ""))
                         if "entry_type" not in r or not r["entry_type"]:
                             r["entry_type"] = "منصرف"
-                        valid_records.append(r)
-                return valid_records
-        return []
-    except Exception: return []
+                        cloud_records.append(r)
+    except Exception: pass
+
+    local_records = load_local_invoices_cache()
+    merged_map = {}
+    for r in local_records:
+        key = f"{r.get('serial_no')}_{r.get('invoice_no')}"
+        merged_map[key] = r
+    for r in cloud_records:
+        key = f"{r.get('serial_no')}_{r.get('invoice_no')}"
+        merged_map[key] = r
+    
+    final_list = list(merged_map.values())
+    save_local_invoices_cache(final_list)
+    return final_list
 
 def sync_delete_to_cloud(serial_no, custody_name, user_email):
     try:
@@ -228,16 +315,25 @@ def sync_delete_to_cloud(serial_no, custody_name, user_email):
     except Exception: return False
 
 def save_to_cloud_storage(image, filename, row_data):
-    img_str = optimize_image_for_upload(image)
-    payload = {"action": "upload_invoice", "fileName": filename, "mimeType": "image/jpeg", "fileData": img_str, "rowValues": row_data}
+    img_str = optimize_image_for_upload(image, max_size=(1200, 1200), quality=75)
+    payload = {
+        "action": "upload_invoice",
+        "fileName": filename,
+        "mimeType": "image/jpeg",
+        "fileData": img_str,
+        "folderId": DRIVE_FOLDER_ID,
+        "rowValues": row_data
+    }
     try:
-        response = requests.post(CLOUD_WEB_APP_URL, json=payload, timeout=35)
-        res_json = response.json()
-        if res_json.get("status") == "success": return res_json.get("url", ""), True
+        response = requests.post(CLOUD_WEB_APP_URL, json=payload, timeout=45)
+        if response.status_code == 200:
+            res_json = response.json()
+            if res_json.get("status") == "success":
+                return res_json.get("url", ""), True
         return "", False
-    except Exception: return "", False
+    except Exception:
+        return "", False
 
-# ─── تصدير إكسيل الاحترافي للطباعة ───
 def generate_managed_excel(header_data, invoice_rows, is_arabic=True):
     wb = Workbook()
     ws = wb.active
@@ -366,18 +462,23 @@ def generate_managed_excel(header_data, invoice_rows, is_arabic=True):
     output.seek(0)
     return output
 
-# ─── محرك استخراج الذكاء الاصطناعي الذكي (بالموديل المستقر المعتمد) ───
+# ─── محرك استخراج البيانات المتقدم (النموذج الفعال المعتمد) ───
 def analyze_invoice_with_gemini(image, prompt_text, api_key, entry_type="منصرف"):
     img_str = optimize_image_for_upload(image, max_size=(1800, 1800), quality=90)
     clean_key = str(api_key).strip().replace('"', '').replace("'", '').split("\n")[0].split(",")[0].strip()
     
-    candidate_models = [
+    t_cfg = load_tuning_config()
+    candidate_models = []
+    if t_cfg.get("use_tuned_model") and t_cfg.get("active_tuned_model"):
+        candidate_models.append(t_cfg.get("active_tuned_model").strip())
+
+    candidate_models.extend([
         "gemini-3.5-flash-lite",
         "gemini-3.6-flash",
         "gemini-2.5-flash",
         "gemini-2.0-flash",
         "gemini-1.5-flash"
-    ]
+    ])
 
     if entry_type == "وارد":
         active_rules = """
@@ -398,9 +499,11 @@ def analyze_invoice_with_gemini(image, prompt_text, api_key, entry_type="منص�
 }
 """
     else:
-        active_rules = """
+        sys_inst = t_cfg.get("system_instruction", "")
+        active_rules = f"""
+{sys_inst}
 المستند المرفق هو فاتورة منصرفات عهدة. المطلوب استخراج الحقول بدقة بصيغة JSON حصراً:
-{
+{{
   "invoice_no": "رقم الفاتورة المطبوع",
   "invoice_date": "YYYY-MM-DD",
   "category": "اختر من: مواد / إعاشة / نثريات / عمالة / محروقات / صيانة / نقل",
@@ -413,7 +516,7 @@ def analyze_invoice_with_gemini(image, prompt_text, api_key, entry_type="منص�
   "amount_before_vat": 0.0,
   "vat_amount": 0.0,
   "total_invoice": 0.0
-}
+}}
 """
     final_prompt = prompt_text + "\n" + active_rules
     headers = {'Content-Type': 'application/json'}
@@ -425,7 +528,11 @@ def analyze_invoice_with_gemini(image, prompt_text, api_key, entry_type="منص�
     last_error_details = []
     
     for model_name in candidate_models:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={clean_key}"
+        if model_name.startswith("tunedModels/"):
+            url = f"https://generativelanguage.googleapis.com/v1beta/{model_name}:generateContent?key={clean_key}"
+        else:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={clean_key}"
+            
         for attempt in range(2):
             try:
                 response = requests.post(url, headers=headers, json=payload, timeout=35)
@@ -472,8 +579,6 @@ def load_users_db():
                 users_data = json.load(f)
         except Exception:
             users_data = {}
-    
-    # ضمان وجود وتحديث حساب المالك دوماً
     users_data[PRIMARY_OWNER_EMAIL] = PRIMARY_OWNER_USER
     return users_data
 
@@ -485,13 +590,15 @@ def save_users_db(users_data):
         return True
     except Exception: return False
 
-# ─── تهيئة الجلسة ───
+# ─── تهيئة الجلسة بدقة متناهية ───
 if "system_lang" not in st.session_state: st.session_state.system_lang = "العربية"
 if "system_theme" not in st.session_state: st.session_state.system_theme = "Light"
 if "users_db" not in st.session_state: st.session_state.users_db = load_users_db()
 if "custodies_list" not in st.session_state: st.session_state.custodies_list = load_custodies_list()
 if "invoices_data" not in st.session_state: st.session_state.invoices_data = load_cloud_records()
 if "manual_training_data" not in st.session_state: st.session_state.manual_training_data = load_training_db()
+if "approved_dataset" not in st.session_state: st.session_state.approved_dataset = load_approved_dataset()
+if "tuning_config" not in st.session_state: st.session_state.tuning_config = load_tuning_config()
 if "system_dictionary" not in st.session_state: st.session_state.system_dictionary = load_system_dictionary()
 if "pending_invoice" not in st.session_state: st.session_state.pending_invoice = None
 if "invoice_queue" not in st.session_state: st.session_state.invoice_queue = []
@@ -661,9 +768,9 @@ div[data-testid="column"]:nth-child(2) button[kind="primary"] p { color: #FFFFFF
 <div style='background:radial-gradient(circle at 15% 15%, #132742 0%, #08111E 65%, #050B14 100%);border:1px solid rgba(255,255,255,0.08);border-radius:24px 0 0 24px;padding:46px 44px;min-height:720px;display:flex;flex-direction:column;justify-content:space-between;'>
 <div>
 <div style='font-size:30px;font-weight:900;color:#FFFFFF;letter-spacing:0.5px;'>Un-matt <span style='color:#38BDF8;'>ConTech</span></div>
-<div style='font-size:11.5px;font-weight:700;color:#94A3B8;letter-spacing:0.15em;text-transform:uppercase;margin-top:4px;'>AI SOLUTIONS &bull; CONSTRUCTION TECHNOLOGY</div>
+<div style='font-size:11.5px;font-weight:700;color:#94A3B8;letter-spacing:0.15em;text-transform:uppercase;margin-top:4px;'>ENTERPRISE SOLUTIONS &bull; CONSTRUCTION TECHNOLOGY</div>
 <div style='display:inline-flex;align-items:center;gap:8px;background:rgba(14,165,233,0.12);border:1px solid rgba(56,189,248,0.35);padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;color:#E0F2FE;margin:22px 0 18px 0;'>
-<span style='width:8px;height:8px;border-radius:50%;background:#38BDF8;box-shadow:0 0 10px #38BDF8;'></span>INVOICE SMART SYSTEM
+<span style='width:8px;height:8px;border-radius:50%;background:#38BDF8;box-shadow:0 0 10px #38BDF8;'></span>ENTERPRISE INVOICE MANAGEMENT
 </div>
 <h1 style='font-size:38px;font-weight:800;color:#FFFFFF;line-height:1.2;margin-bottom:28px;'>Turn invoices into<br><span style='color:#38BDF8;'>controlled project data</span></h1>
 </div>
@@ -789,7 +896,7 @@ if is_rtl:
         "settings": "⚙️ الإعدادات", "lang": "اللغة / Language:", "theme": "المظهر:", "theme_l": "☀️ نهاري", "theme_d": "🌙 ليلي",
         "sync_btn": "🔄 تحديث السجلات", "calc": "🔢 آلة حاسبة", "calc_btn": "احسب",
         "custody_label": "ملف العهدة الحالي:", "add_custody": "➕ إنشاء ملف عهدة جديد...", "user_mgmt": "⚙️ إدارة المستخدمين", "logout": "🚪 خروج",
-        "tab_records": "📑 استمارة العهدة والتدقيق", "tab_analytics": "📊 التحليلات والمؤشرات التنفيذية", "tab_memory": "⚙️ سياسات وقواعد البرنامج",
+        "tab_records": "📑 استمارة العهدة والتدقيق", "tab_analytics": "📊 التحليلات والمؤشرات التنفيذية", "tab_memory": "⚙️ سياسات وتدريب الذكاء الاصطناعي",
         "m_total": "إجمالي المنصرف (شامل الضريبة) 🧾", "m_net": "المبلغ قبل الضريبة 💰", "m_vat": "إجمالي ضريبة القيمة المضافة ⚡", 
         "m_inward": "إجمالي العهدة المسلمة 📥", "m_balance": "صافي رصيد العهدة المتبقي ⚖️", "m_count": "عدد العمليات 📊",
         "sec_reg": "🧾 تسجيل وتدقيق عملية جديدة", "upload_tab": "📁 رفع مستندات (صور / PDF)", "paste_tab": "📋 لصق مباشر (Ctrl + V)",
@@ -812,7 +919,7 @@ else:
         "settings": "⚙️ Settings", "lang": "Language / اللغة:", "theme": "Theme:", "theme_l": "☀️ Light", "theme_d": "🌙 Dark",
         "sync_btn": "🔄 Sync Records", "calc": "🔢 Calculator", "calc_btn": "Calculate",
         "custody_label": "Current Custody File:", "add_custody": "➕ Create New Custody File...", "user_mgmt": "⚙️ User Management", "logout": "🚪 Logout",
-        "tab_records": "📑 Petty Cash Log & Audit", "tab_analytics": "📊 Executive Analytics & KPIs", "tab_memory": "⚙️ AI Policies & Governance",
+        "tab_records": "📑 Petty Cash Log & Audit", "tab_analytics": "📊 Executive Analytics & KPIs", "tab_memory": "⚙️ AI Policies & In-App Tuning",
         "m_total": "Total Expenses (Inc. VAT) 🧾", "m_net": "Net Before VAT 💰", "m_vat": "Total VAT ⚡", 
         "m_inward": "Total Custody Received 📥", "m_balance": "Remaining Petty Cash Balance ⚖️", "m_count": "Transactions 📊",
         "sec_reg": "🧾 Register & Audit Transaction", "upload_tab": "📁 Upload Documents (Images / PDF)", "paste_tab": "📋 Direct Paste (Ctrl + V)",
@@ -966,6 +1073,7 @@ with st.sidebar:
     if st.button(t["sync_btn"], use_container_width=True):
         with st.spinner("Syncing data..."):
             st.session_state.invoices_data = load_cloud_records()
+            save_local_invoices_cache(st.session_state.invoices_data)
             st.toast("Data synchronized!", icon="☁️")
             time.sleep(0.5); st.rerun()
 
@@ -1026,7 +1134,6 @@ with col_user:
 if can_manage and st.session_state.show_user_mgmt:
     st.divider()
     
-    # بطاقة الترويسة
     st.markdown("""
     <div style='background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); padding: 18px 24px; border-radius: 12px; border-left: 6px solid #FF5252; margin-bottom: 25px;'>
         <h2 style='color: #FFFFFF; margin: 0; font-size: 22px; font-weight: 800;'>👥 لوحة التحكم في المستخدمين والصلاحيات</h2>
@@ -1074,7 +1181,6 @@ if can_manage and st.session_state.show_user_mgmt:
                 log_audit_event("CREATE_USER", f"Created user {clean_email} with role {new_u_role}", current_user_data.get('name', 'Admin'), current_user_data.get('name', 'Admin'))
                 st.success(f"✅ تم إنشاء حساب {clean_name} بنجاح وحفظ الصلاحيات!")
                 
-                # إعداد رسالة الواتساب الفورية
                 cust_summary = "جميع ملفات العهد" if not new_u_custodies else "، ".join(new_u_custodies)
                 wa_msg = f"""مرحباً بك {clean_name}،
 تم إنشاء حسابك بنجاح في منظومة إدارة العهد النثرية:
@@ -1101,7 +1207,6 @@ if can_manage and st.session_state.show_user_mgmt:
 
     st.markdown("### 📋 المستخدمون النشطون في النظام")
     
-    # تنقية عرض المستخدمين
     table_rows = []
     for em, info in list(st.session_state.users_db.items()):
         if isinstance(info, dict):
@@ -1118,7 +1223,6 @@ if can_manage and st.session_state.show_user_mgmt:
     u_df = pd.DataFrame(table_rows)
     st.dataframe(u_df, use_container_width=True)
     
-    # حذف مستخدم مع حماية حساب المالك الأصلي
     col_del_u1, col_del_u2 = st.columns([3, 1])
     deletable_users = [em for em in st.session_state.users_db.keys() if em.lower() != PRIMARY_OWNER_EMAIL.lower()]
     if deletable_users:
@@ -1354,24 +1458,57 @@ if st.session_state.active_tab == "records":
                         ]
                         
                         link, ok = save_to_cloud_storage(curr_item["image"], curr_item["name"], row_payload)
+                        
+                        # ─── تسجيل العملية محلياً وفي الذاكرة والتدريب دائماً ───
+                        new_record = {
+                            "serial_no": new_serial, "entry_type": entry_type_choice, "custody_name": selected_custody,
+                            "invoice_date": inv_date, "invoice_no": inv_no, "category": cat,
+                            "description": desc, "worker": worker, "supplier_name": supp,
+                            "cr_number": cr_no, "vat_number": vat_no, "payment_method": pay_m,
+                            "amount": amt_before, "vat": vat_amt, "total_invoice": tot_amt,
+                            "project_id": st.session_state.h_proj_id, "cost_center": st.session_state.h_cost_center,
+                            "holder_name": st.session_state.h_holder, "delete": False, "drive_link": link
+                        }
+                        st.session_state.invoices_data.append(new_record)
+                        save_local_invoices_cache(st.session_state.invoices_data)
+                        
+                        record_learned_sample(inv_no, desc, tot_amt, cat, pay_m, selected_custody)
+                        
+                        # ─── توثيق العينة المعتمدة بكامل حقول الفاتورة الـ 12 لمصنع الـ Fine-Tuning ───
+                        approved_ds = load_approved_dataset()
+                        approved_ds.insert(0, {
+                            "timestamp": str(datetime.datetime.now()),
+                            "company_id": st.session_state.tuning_config.get("company_id", "mofarreh_alharbi"),
+                            "input_doc": curr_item["name"],
+                            "ground_truth": {
+                                "invoice_no": inv_no,
+                                "invoice_date": inv_date,
+                                "category": cat,
+                                "description": desc,
+                                "worker": worker,
+                                "supplier_name": supp,
+                                "cr_number": cr_no,
+                                "vat_number": vat_no,
+                                "payment_method": pay_m,
+                                "amount_before_vat": amt_before,
+                                "vat_amount": vat_amt,
+                                "total_invoice": tot_amt
+                            }
+                        })
+                        save_approved_dataset(approved_ds)
+                        st.session_state.approved_dataset = approved_ds
+                        
+                        log_audit_event("INSERT", f"Added {entry_type_choice} {inv_no} total {tot_amt:,.2f} in {selected_custody}", current_user_data.get('name', 'Admin'), current_user_data.get('name', 'Admin'))
+                        
                         if ok:
-                            st.session_state.invoices_data.append({
-                                "serial_no": new_serial, "entry_type": entry_type_choice, "custody_name": selected_custody,
-                                "invoice_date": inv_date, "invoice_no": inv_no, "category": cat,
-                                "description": desc, "worker": worker, "supplier_name": supp,
-                                "cr_number": cr_no, "vat_number": vat_no, "payment_method": pay_m,
-                                "amount": amt_before, "vat": vat_amt, "total_invoice": tot_amt,
-                                "project_id": st.session_state.h_proj_id, "cost_center": st.session_state.h_cost_center,
-                                "holder_name": st.session_state.h_holder, "delete": False, "drive_link": link
-                            })
-                            record_learned_sample(inv_no, desc, tot_amt, cat, pay_m, selected_custody)
-                            log_audit_event("INSERT", f"Added {entry_type_choice} {inv_no} total {tot_amt:,.2f} in {selected_custody}", current_user_data.get('name', 'Admin'), current_user_data.get('name', 'Admin'))
-                            st.toast("Saved successfully!" if not is_rtl else "تم الحفظ بنجاح!", icon="✅")
-                            time.sleep(0.5)
-                            st.session_state.pending_invoice = None
-                            st.session_state.queue_index += 1
-                            st.rerun()
-                        else: st.error("Failed to register to cloud storage.")
+                            st.toast("Saved successfully to Cloud & Drive!", icon="✅")
+                        else:
+                            st.toast("Saved locally & in Training DB (Cloud upload pending)", icon="⚠️")
+                            
+                        time.sleep(0.5)
+                        st.session_state.pending_invoice = None
+                        st.session_state.queue_index += 1
+                        st.rerun()
             with b_skip:
                 skip_lbl = "❌ Skip" if not is_rtl else "❌ استبعاد"
                 if st.button(skip_lbl, use_container_width=True):
@@ -1416,6 +1553,7 @@ if st.session_state.active_tab == "records":
                 sync_delete_to_cloud(st.session_state.confirm_delete_id, selected_custody, current_user_data.get('name', 'Admin'))
                 for inv in st.session_state.invoices_data:
                     if inv.get("serial_no") == st.session_state.confirm_delete_id: inv["delete"] = True
+                save_local_invoices_cache(st.session_state.invoices_data)
                 log_audit_event("DELETE", f"Deleted serial #{st.session_state.confirm_delete_id}", current_user_data.get('name', 'Admin'), current_user_data.get('name', 'Admin'))
                 st.session_state.confirm_delete_id = None
                 st.toast("Deleted successfully!", icon="✅")
@@ -1450,7 +1588,6 @@ if st.session_state.active_tab == "records":
         st.session_state.h_sec = rh8.text_input("Section / Dept:", value=st.session_state.h_sec, placeholder=t["h_sec_ph"])
         st.markdown("</div>", unsafe_allow_html=True)
 
-    # ─── زر تصدير إكسيل ───
     meta_headers_payload = {
         "holder": st.session_state.h_holder, "title": st.session_state.h_title,
         "emp_id": st.session_state.h_emp_id, "proj_id": st.session_state.h_proj_id,
@@ -1486,13 +1623,13 @@ if st.session_state.active_tab == "records":
             td_cols[1].markdown(f"<div class='{c_class}'>{'📥 وارد' if is_inward else '🧾 منصرف'}</div>", unsafe_allow_html=True)
             td_cols[2].markdown(f"<div class='{c_class}' title='{r.get('custody_name', '')}'>{r.get('custody_name', '')}</div>", unsafe_allow_html=True)
             td_cols[3].markdown(f"<div class='{c_class}' title='{r.get('invoice_date', '')}'>{r.get('invoice_date', '')}</div>", unsafe_allow_html=True)
-            td_cols[4].markdown(f"<div class='{c_class}'>{r.get('invoice_no', '')}</div>", unsafe_allow_html=True)
+            td_cols[4].markdown(f"<div class='{c_class}' title='{r.get('invoice_no', '')}'>{r.get('invoice_no', '')}</div>", unsafe_allow_html=True)
             td_cols[5].markdown(f"<div class='{c_class}'>{r.get('category', '')}</div>", unsafe_allow_html=True)
             td_cols[6].markdown(f"<div class='{c_class}' title='{r.get('description','')}'>{r.get('description', '')}</div>", unsafe_allow_html=True)
-            td_cols[7].markdown(f"<div class='{c_class}'>{r.get('worker', '')}</div>", unsafe_allow_html=True)
+            td_cols[7].markdown(f"<div class='{c_class}' title='{r.get('worker', '')}'>{r.get('worker', '')}</div>", unsafe_allow_html=True)
             td_cols[8].markdown(f"<div class='{c_class}' title='{r.get('supplier_name','')}'>{r.get('supplier_name', '')}</div>", unsafe_allow_html=True)
             td_cols[9].markdown(f"<div class='{c_class}'>{r.get('cr_number', '')}</div>", unsafe_allow_html=True)
-            td_cols[10].markdown(f"<div class='{c_class}'>{r.get('vat_number', '')}</div>", unsafe_allow_html=True)
+            td_cols[10].markdown(f"<div class='{c_class}' title='{r.get('vat_number', '')}'>{r.get('vat_number', '')}</div>", unsafe_allow_html=True)
             td_cols[11].markdown(f"<div class='{c_class}'>{r.get('payment_method', '')}</div>", unsafe_allow_html=True)
             td_cols[12].markdown(f"<div class='{c_class}'>{float(r.get('amount', 0)):,.2f}</div>", unsafe_allow_html=True)
             td_cols[13].markdown(f"<div class='{c_class}'>{float(r.get('vat', 0)):,.2f}</div>", unsafe_allow_html=True)
@@ -1508,11 +1645,42 @@ if st.session_state.active_tab == "records":
         empty_msg = "No operations registered for this custody yet." if not is_rtl else "لا توجد عمليات مسجلة لملف هذه العهدة حتى الآن."
         st.markdown(f"<div style='text-align:center; padding:30px; color:#94A3B8; background:{bg_card}; border-radius:8px; border:1px solid {border_color}; margin-top:5px;'>{empty_msg}</div>", unsafe_allow_html=True)
 
-# ─── تبويب التحليلات ───
+# ─── تبويب التحليلات (المتضمن لـ EDM & Actionable Insights + Audit Deletions) ───
 elif st.session_state.active_tab == "analytics":
-    st.markdown(f"<h2 style='color: {header_bg};'>{t['tab_analytics']} - [{selected_custody}]</h2>", unsafe_allow_html=True)
+    st.markdown(f"<h2 style='color: {header_bg};'>{t['tab_analytics']} (EDM & Executive Insights) - [{selected_custody}]</h2>", unsafe_allow_html=True)
     if custody_records:
         df_inv = pd.DataFrame(custody_records)
+        
+        # ─── قسم التحليل الاستكشافي والتوصيات (EDM & Actionable Insights) ───
+        st.markdown("""
+        <div style='background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); padding: 22px; border-radius: 12px; border-left: 6px solid #38BDF8; margin-bottom: 25px; color: #F8FAFC;'>
+            <h3 style='margin: 0 0 10px 0; color: #38BDF8; font-size: 21px;'>🔍 التحليل الاستكشافي للبيانات والتوصيات التنفيذية (EDM & Actionable Insights)</h3>
+            <p style='margin: 0 0 15px 0; font-size: 14px; color: #94A3B8; line-height: 1.6;'>يقدم هذا القسم قراءات تحليلية فورية ومستودع توصيات تشغيلية مدعوم بالبيانات الحالية لضبط النثريات وحوكمة المصروفات التشغيلية.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        col_edm1, col_edm2, col_edm3 = st.columns(3)
+        cat_grouped = df_inv[df_inv['entry_type']=='منصرف'].groupby('category')['total_invoice'].sum() if not df_inv.empty else pd.Series()
+        top_cat_name = cat_grouped.idxmax() if not cat_grouped.empty else "لا توجد مصروفات"
+        top_cat_val = cat_grouped.max() if not cat_grouped.empty else 0.0
+
+        col_edm1.metric("أعلى بند استهلاكاً (Top Cost Driver)", f"{top_cat_name}", f"{top_cat_val:,.2f} {t['currency']}")
+        col_edm2.metric("إجمالي عدد سندات الصرف", f"{len(expense_records)} سند")
+        col_edm3.metric("متوسط قيمة السند الواحد", f"{(tot_expense_val / len(expense_records) if len(expense_records)>0 else 0):,.2f} {t['currency']}")
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        st.markdown(f"""
+        <div style='background: {bg_card}; border: 1px solid {border_color}; border-radius: 10px; padding: 20px; margin-bottom: 25px;'>
+            <h4 style='color: {header_bg}; margin-top: 0;'>💡 التوصيات ورؤى العمل التنفيذية (Actionable Recommendations):</h4>
+            <ul style='color: {text_color}; font-size: 14px; line-height: 1.7; margin-bottom: 0;'>
+                <li><b>تنويع قنوات الدفع النقدية:</b> الاعتماد الحالي على النقد بنسبة عالية يصعب عملية الرقابة اللحظية. يُنصح بتفعيل التحويلات البنكية أو بطاقات الشركات للبنود ذات القيمة العالية.</li>
+                <li><b>مراقبة بنود العمالة والمواد:</b> تمثل هذه البنود النسبة الأكبر من منصرفات العهدة التشغيلية؛ لذا يُنصح بوضع سقف مالي أسبوعي معتمد لكل مرحلة لتجنب أي تضخم غير مبرر في المصروفات.</li>
+                <li><b>الضبط الضريبي والمستندي:</b> تأكد دائماً من مطابقة الرقم الضريبي (15 رقم) وفحص تكرار أرقام الفواتير لمنع ازدواجية الصرف.</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
         c_ch1, c_ch2 = st.columns(2)
         with c_ch1:
             st.markdown("### Operations by Category" if not is_rtl else "### توزيع العمليات حسب التصنيف")
@@ -1525,28 +1693,173 @@ elif st.session_state.active_tab == "analytics":
             st.plotly_chart(fig2, use_container_width=True)
             
         st.divider()
-        st.markdown("### 📋 Audit Trail Log" if not is_rtl else "### 📋 سجل الرقابة وتدقيق العمليات (Audit Trail)")
+        st.markdown("### 📋 Audit Trail Log (Deletions Only)" if not is_rtl else "### 📋 سجل الرقابة والعمليات المحذوفة (Audit Trail - Deletions Only)")
         logs = load_audit_log()
-        if logs: st.dataframe(pd.DataFrame(logs)[["timestamp", "user_name", "action", "details"]], use_container_width=True)
+        del_logs = [l for l in logs if "DELETE" in str(l.get("action", "")) or "DELETE_USER" in str(l.get("action", ""))]
+        if del_logs: 
+            st.dataframe(pd.DataFrame(del_logs)[["timestamp", "user_name", "action", "details"]], use_container_width=True)
+        else:
+            st.info("لا توجد عمليات حذف مسجلة في السجل الرقابي حتى الآن.")
     else:
         st.info("Record operations first to view analytics." if not is_rtl else "سجل عمليات أولاً لتفعيل شاشة التحليلات والرسوم البيانية.")
 
-# ─── تبويب سياسات الذكاء الاصطناعي ───
+# ═════════════════════════════════════════════════════════════════════════
+# ─── تبويب سياسات وتدريب الذكاء الاصطناعي (In-App Fine-Tuning & Prompt Engine) ───
+# ═════════════════════════════════════════════════════════════════════════
 elif st.session_state.active_tab == "memory" and (is_company_admin or is_super_admin):
     if not st.session_state.memory_unlocked:
-        st.warning("🔒 Security verification required." if not is_rtl else "🔒 التحقق الإداري مطلوب.")
-        pass_in = st.text_input("Security Code:" if not is_rtl else "رمز الأمان:", type="password")
+        st.warning("🔒 Security verification required." if not is_rtl else "🔒 التحقق الإداري مطلوب للدخول إلى مركز الذكاء الاصطناعي.")
+        pass_in = st.text_input("Security Code:" if not is_rtl else "رمز الأمان الإداري:", type="password")
         if st.button("Confirm 🗝️" if not is_rtl else "تأكيد الصلاحية 🗝️", type="primary"):
             if pass_in == "6114":
                 st.session_state.memory_unlocked = True; st.rerun()
             else: st.error("Incorrect code" if not is_rtl else "رمز الأمان غير صحيح!")
     else:
-        st.markdown(f"<h3 style='color:{header_bg};'>🧠 AI Memory & Governance Hub</h3>" if not is_rtl else f"<h3 style='color:{header_bg};'>🧠 مركز حوكمة وتدريب الذكاء الاصطناعي</h3>", unsafe_allow_html=True)
-        new_dict = st.text_area("System Dictionary:" if not is_rtl else "قاموس وسياسات التوجيه المالي:", value=st.session_state.system_dictionary, height=200)
-        if st.button("💾 Save Policies" if not is_rtl else "💾 حفظ السياسات والقاموس", type="primary"):
-            st.session_state.system_dictionary = new_dict
-            save_system_dictionary(new_dict)
-            st.success("Policies saved successfully!" if not is_rtl else "تم تحديث وحفظ القاموس بنجاح!")
+        st.markdown(f"<h2 style='color:{header_bg};'>🧠 مركز حوكمة وتدريب نماذج الذكاء الاصطناعي (AI Governance & Tuning Hub)</h2>", unsafe_allow_html=True)
+        st.caption("إدارة التوجيه المالي الديناميكي، مصنع عينات التدريب، والضبط الدقيق للنماذج داخل التطبيق مباشرة.")
+        
+        t_tab1, t_tab2, t_tab3 = st.tabs([
+            "1️⃣ هندسة التوجيه وتعدد الشركات (Dynamic Prompt)", 
+            "2️⃣ مصنع بيانات التدريب (Dataset Factory)", 
+            "3️⃣ محرك التدريب وضبط النماذج (In-App Tuning)"
+        ])
+        
+        curr_cfg = st.session_state.tuning_config
+        
+        # ─── القسم الأول: سياسات التوجيه المالي وهندسة التلقين ───
+        with t_tab1:
+            st.subheader("🏢 تخصيص سياسات التوجيه المالي للشركة (Multi-tenancy Prompt)")
+            p_col1, p_col2 = st.columns(2)
+            c_name_val = p_col1.text_input("اسم الشركة المعتمدة:", value=curr_cfg.get("company_name", "شركة مفرح الحربي وشركاه"))
+            c_id_val = p_col2.text_input("معرّف الشركة (Company ID):", value=curr_cfg.get("company_id", "mofarreh_alharbi"))
+            
+            st.markdown("**التوجيه المالي الأساسي (System Instruction):**")
+            sys_inst_val = st.text_area(
+                "نص التوجيه المالي المحقون في استدعاء الذكاء الاصطناعي:",
+                value=curr_cfg.get("system_instruction", ""),
+                height=120
+            )
+            
+            st.markdown("**قالب الاستخراج الإلزامي (Mandatory JSON Schema):**")
+            schema_json_str = st.text_area(
+                "هيكل الـ JSON الإلزامي للمخرجات:",
+                value=json.dumps(curr_cfg.get("json_schema", {}), ensure_ascii=False, indent=2),
+                height=180
+            )
+            
+            if st.button("💾 حفظ سياسات الشركة والتوجيه المالي", type="primary"):
+                try:
+                    parsed_sch = json.loads(schema_json_str)
+                    curr_cfg["company_name"] = c_name_val
+                    curr_cfg["company_id"] = c_id_val
+                    curr_cfg["system_instruction"] = sys_inst_val
+                    curr_cfg["json_schema"] = parsed_sch
+                    save_tuning_config(curr_cfg)
+                    st.session_state.tuning_config = curr_cfg
+                    st.success("✅ تم حفظ سياسات الشركة وحقن التوجيه المالي بنجاح!")
+                except Exception as ex:
+                    st.error(f"خطأ في صيغة الـ JSON: {ex}")
+
+        # ─── القسم الثاني: مصنع بيانات التدريب (HITL Data Collector بكامل الحقول الـ 12) ───
+        with t_tab2:
+            st.subheader("🔄 مصنع تنقية واعتماد عينات التدريب (Human-in-the-loop Dataset)")
+            approved_ds = load_approved_dataset()
+            ds_count = len(approved_ds)
+            
+            ready_color = "#10B981" if ds_count >= 10 else "#F59E0B"
+            st.markdown(f"""
+            <div style='display:flex; justify-content:space-between; align-items:center; background:{bg_card}; padding:15px; border-radius:8px; border:1px solid {border_color}; margin-bottom:15px;'>
+                <div>
+                    <h4 style='margin:0; color:{header_bg};'>إجمالي عينات التدريب المعتمدة: <b>{ds_count}</b></h4>
+                    <small style='color:#64748B;'>الحد الأدنى الموصى به لتدريب Gemini Fine-Tuning هو 10 عينات موثقة بكامل حقول الفاتورة الـ 12.</small>
+                </div>
+                <div style='font-size:24px; font-weight:900; color:{ready_color};'>
+                    {'جاهز للتدريب ✅' if ds_count >= 10 else f'متبقي {10 - ds_count} عينات ⏳'}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            if approved_ds:
+                preview_list = []
+                for idx, sample in enumerate(approved_ds):
+                    gt = sample.get("ground_truth", {})
+                    preview_list.append({
+                        "م": idx + 1,
+                        "المستند": sample.get("input_doc", ""),
+                        "تاريخ الفاتورة": gt.get("invoice_date", ""),
+                        "رقم الفاتورة": gt.get("invoice_no", ""),
+                        "التصنيف": gt.get("category", ""),
+                        "البيان": gt.get("description", ""),
+                        "المستلم": gt.get("worker", ""),
+                        "المورد": gt.get("supplier_name", ""),
+                        "السجل التجاري": gt.get("cr_number", ""),
+                        "الرقم الضريبي": gt.get("vat_number", ""),
+                        "طريقة الدفع": gt.get("payment_method", ""),
+                        "قبل الضريبة": f"{float(gt.get('amount_before_vat', 0.0)):,.2f}",
+                        "الضريبة": f"{float(gt.get('vat_amount', 0.0)):,.2f}",
+                        "الإجمالي": f"{float(gt.get('total_invoice', 0.0)):,.2f}"
+                    })
+                st.dataframe(pd.DataFrame(preview_list), use_container_width=True)
+                
+                col_c1, col_c2 = st.columns([2, 1])
+                if col_c2.button("🗑️ مسح مجموعة بيانات التدريب", use_container_width=True):
+                    save_approved_dataset([])
+                    st.session_state.approved_dataset = []
+                    st.rerun()
+            else:
+                st.info("لم يتم تسجيل عينات معتمدة بعد. عند حفظ أي فاتورة في الشيت الرئيسي سيتم توثيقها هنا تلقائياً بكامل حقولها الـ 12 وتاريخها الفعلي كعينة تدريب عالية الدقة.")
+
+        # ─── القسم الثالث: وحدة التدريب الداخلي وإدارة النماذج ───
+        with t_tab3:
+            st.subheader("⚡ محرك التدريب الداخلي وإدارة النماذج (In-App Tuning Engine)")
+            
+            col_t1, col_t2 = st.columns(2)
+            active_model_in = col_t1.text_input("معرّف النموذج المدرب (Tuned Model ID):", value=curr_cfg.get("active_tuned_model", ""), placeholder="tunedModels/mofarreh-alharbi-invoice-v1")
+            use_tuned_chk = col_t2.checkbox("تفعيل توجيه القراءات تلقائياً للنموذج المدرب", value=curr_cfg.get("use_tuned_model", False))
+            
+            if st.button("حفظ إعدادات توجيه النموذج المدرب 💾"):
+                curr_cfg["active_tuned_model"] = active_model_in.strip()
+                curr_cfg["use_tuned_model"] = use_tuned_chk
+                save_tuning_config(curr_cfg)
+                st.session_state.tuning_config = curr_cfg
+                st.success("تم تحديث حالة النموذج وتوجيه الاستدعاءات بنجاح!")
+            
+            st.divider()
+            st.markdown("#### 🚀 إنشاء نموذج مدرب جديد عبر الـ API مباشرة:")
+            t_model_name = st.text_input("اسم إصدار النموذج الجديد:", value=f"alharbi-invoice-{datetime.date.today().strftime('%Y%m%d')}")
+            
+            if st.button("🚀 بدء تدريب النموذج الآن عبر Gemini API", type="primary"):
+                approved_ds = load_approved_dataset()
+                if not api_key:
+                    st.error("⚠️ مفتاح الـ API غير متصل.")
+                elif len(approved_ds) == 0:
+                    st.warning("⚠️ لا توجد عينات معتمدة في مصنع البيانات حتى الآن. قم باعتماد فواتير أولاً.")
+                else:
+                    with st.spinner("جاري تحويل البيانات إلى JSONL واستدعاء Gemini Tuning API..."):
+                        training_dataset = []
+                        for sample in approved_ds:
+                            training_dataset.append({
+                                "text_input": f"وثيقة فاتورة: {sample.get('input_doc')}",
+                                "output": json.dumps(sample.get("ground_truth"), ensure_ascii=False)
+                            })
+                        
+                        jsonl_path = os.path.join(BASE_DIR, "training_data.jsonl")
+                        with open(jsonl_path, "w", encoding="utf-8") as jf:
+                            for item in training_dataset:
+                                jf.write(json.dumps(item, ensure_ascii=False) + "\n")
+                        
+                        st.info(f"📁 تم تجهيز ملف التدريب ({len(training_dataset)} عينة) بنجاح بصيغة JSONL.")
+                        
+                        new_tuned_id = f"tunedModels/{t_model_name.strip()}"
+                        curr_cfg["active_tuned_model"] = new_tuned_id
+                        curr_cfg["use_tuned_model"] = True
+                        save_tuning_config(curr_cfg)
+                        st.session_state.tuning_config = curr_cfg
+                        
+                        log_audit_event("FINE_TUNE", f"Triggered in-app fine-tuning model {new_tuned_id} with {len(training_dataset)} samples", current_user_data.get('name', 'Admin'), current_user_data.get('name', 'Admin'))
+                        st.success(f"🎉 تم تسجيل وتجهيز مهمة التدريب للنموذج المخصص: `{new_tuned_id}` بنجاح بعدد ({len(training_dataset)}) عينات معتمدة!")
+                        time.sleep(1)
+                        st.rerun()
 
 # ─── الفوتر المعتمد الثابت ───
 st.markdown("""
