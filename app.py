@@ -265,7 +265,6 @@ def normalize_date(date_str):
         return f"{y}-{int(m):02d}-{int(d):02d}"
     return date_clean
 
-# ─── تحسين ضغط الصور لمنع انهيار الذاكرة مع الملفات الكبيرة ───
 def optimize_image_for_upload(image, max_size=(1400, 1400), quality=80):
     img = image.copy()
     if img.mode != 'RGB': img = img.convert('RGB')
@@ -418,7 +417,7 @@ def generate_managed_excel(header_data, invoice_rows, is_arabic=True):
         ws.row_dimensions[idx].height = 20
         e_type = inv.get("entry_type", "منصرف")
         row_items = [
-            inv.get("serial_no", idx - start_row),
+            inv.get("display_serial", idx - start_row),
             e_type,
             inv.get("custody_name", ""),
             inv.get("invoice_date", ""),
@@ -463,7 +462,7 @@ def generate_managed_excel(header_data, invoice_rows, is_arabic=True):
     output.seek(0)
     return output
 
-# ─── محرك استخراج البيانات المحدث مع زيادة المهلة الزمنية ───
+# ─── محرك استخراج البيانات المتقدم ───
 def analyze_invoice_with_gemini(image, prompt_text, api_key, entry_type="منصرف"):
     img_str = optimize_image_for_upload(image, max_size=(1400, 1400), quality=80)
     clean_key = str(api_key).strip().replace('"', '').replace("'", '').split("\n")[0].split(",")[0].strip()
@@ -634,7 +633,7 @@ if not api_key and os.path.exists(API_KEY_FILE):
     except Exception: pass
 
 # ═════════════════════════════════════════════════════════════════════════
-# ─── شاشة تسجيل الدخول ───
+# ─── بوابة تسجيل الدخول ───
 # ═════════════════════════════════════════════════════════════════════════
 if not st.session_state.logged_in:
     st.markdown("""
@@ -996,7 +995,7 @@ section[data-testid="stSidebar"] {{
     color: #FFFFFF !important;
     font-weight: 700 !important;
     font-size: 11px !important;
-    padding: 9px 3px !important;
+    padding: 9px 2px !important;
     text-align: center !important;
     border: 1px solid {border_color} !important;
     white-space: nowrap !important;
@@ -1004,7 +1003,7 @@ section[data-testid="stSidebar"] {{
 
 .grid-td {{
     font-weight: 600 !important;
-    padding: 8px 3px !important;
+    padding: 8px 2px !important;
     border-radius: 4px !important;
     border: 1px solid {border_color} !important;
     text-align: center !important;
@@ -1018,7 +1017,7 @@ section[data-testid="stSidebar"] {{
 
 .grid-td-inward {{
     font-weight: 700 !important;
-    padding: 8px 3px !important;
+    padding: 8px 2px !important;
     border-radius: 4px !important;
     border: 1px solid #10B981 !important;
     text-align: center !important;
@@ -1321,7 +1320,6 @@ if st.session_state.active_tab == "records":
             else:
                 with st.spinner("Processing files..."):
                     st.session_state.invoice_queue = []
-                    # ─── تجزئة ذكية وضغط متقدم لملفات الـ PDF الكبيرة ───
                     for file in main_files:
                         if file.name.lower().endswith('.pdf'):
                             doc = fitz.open(stream=file.read(), filetype="pdf")
@@ -1420,7 +1418,7 @@ if st.session_state.active_tab == "records":
                     dup_details.append(f"• Serial: **{dm.get('serial_no')}** | Type: **{dm.get('entry_type', 'منصرف')}** | Date: **{dm.get('invoice_date')}** | Total: **{float(dm.get('total_invoice',0)):,.2f} {t['currency']}**")
                 st.markdown("<br>".join(dup_details), unsafe_allow_html=True)
 
-            # ─── منطقة الإجراءات الثلاثية: اعتماد / إرفاق كمرفق / استبعاد ───
+            # ─── أزرار الإجراءات الثلاثية ───
             st.divider()
             b_save, b_attach, b_skip = st.columns([1.5, 1.5, 1])
             with b_save:
@@ -1514,7 +1512,11 @@ if st.session_state.active_tab == "records":
         if f_type not in ["All", "الكل"] and item.get("entry_type", "منصرف") != f_type: continue
         filtered_invoices.append(item)
 
-    if st.session_state.confirm_delete_id:
+    # ترقيم تسلسلي حي ومتناسق دائماً (1، 2، 3، 4...)
+    for idx_seq, item in enumerate(filtered_invoices, start=1):
+        item["display_serial"] = idx_seq
+
+    if st.session_state.confirm_delete_id is not None:
         target = next((x for x in custody_records if x.get("serial_no") == st.session_state.confirm_delete_id), None)
         del_warn = f"⚠️ Are you sure you want to delete entry ({st.session_state.confirm_delete_id}) with amount ({target.get('total_invoice',0):,.2f} {t['currency']})?" if not is_rtl else f"⚠️ هل أنت متأكد تماماً من حذف العملية رقم ({st.session_state.confirm_delete_id}) بمبلغ ({target.get('total_invoice',0):,.2f} {t['currency']})؟"
         st.warning(del_warn)
@@ -1574,9 +1576,10 @@ if st.session_state.active_tab == "records":
         use_container_width=True
     )
 
-    cols_weights = [0.5, 0.6, 0.9, 0.8, 0.8, 0.7, 1.6, 0.8, 1.0, 0.8, 0.9, 0.8, 0.8, 0.7, 0.8, 0.7, 0.7, 0.4]
+    # ضبط أوزان وعروض الأعمدة مع توسيع عمود الحذف الأخير ليظهر زر 🗑️ بوضوح
+    cols_weights = [0.55, 0.65, 0.85, 0.8, 0.8, 0.75, 1.4, 0.8, 0.95, 0.75, 0.85, 0.75, 0.8, 0.7, 0.85, 0.65, 0.65, 0.75]
     headers_list = ["سريال", "النوع", "ملف العهدة", "التاريخ", "رقم الفاتورة", "التصنيف", "البيان", "المستلم", "المورد", "السجل", "الرقم الضريبي", "الدفع", "قبل الضريبة", "الضريبة", "الإجمالي", "المركز", "المسؤول", "حذف"] if is_rtl else [
-        "Serial", "Type", "Custody File", "Date", "Ref No", "Category", "Description", "Worker", "Supplier", "CR No", "VAT No", "Payment", "Before VAT", "VAT", "Total", "Cost Center", "Holder", "Del"
+        "Serial", "Type", "Custody File", "Date", "Ref No", "Category", "Description", "Worker", "Supplier", "CR No", "VAT No", "Payment", "Before VAT", "VAT", "Total", "Cost Center", "Holder", "Delete"
     ]
 
     th_cols = st.columns(cols_weights)
@@ -1590,7 +1593,7 @@ if st.session_state.active_tab == "records":
             c_class = "grid-td-inward" if is_inward else "grid-td"
             
             td_cols = st.columns(cols_weights)
-            td_cols[0].markdown(f"<div class='{c_class}'>{r.get('serial_no', idx+1)}</div>", unsafe_allow_html=True)
+            td_cols[0].markdown(f"<div class='{c_class}'>{r.get('display_serial', idx+1)}</div>", unsafe_allow_html=True)
             td_cols[1].markdown(f"<div class='{c_class}'>{'📥 وارد' if is_inward else '🧾 منصرف'}</div>", unsafe_allow_html=True)
             td_cols[2].markdown(f"<div class='{c_class}' title='{r.get('custody_name', '')}'>{r.get('custody_name', '')}</div>", unsafe_allow_html=True)
             td_cols[3].markdown(f"<div class='{c_class}' title='{r.get('invoice_date', '')}'>{r.get('invoice_date', '')}</div>", unsafe_allow_html=True)
@@ -1609,7 +1612,7 @@ if st.session_state.active_tab == "records":
             td_cols[15].markdown(f"<div class='{c_class}'>{r.get('cost_center', '')}</div>", unsafe_allow_html=True)
             td_cols[16].markdown(f"<div class='{c_class}'>{r.get('holder_name', '')}</div>", unsafe_allow_html=True)
             with td_cols[17]:
-                if st.button("🗑️", key=f"btn_del_{r.get('serial_no')}_{idx}", use_container_width=True):
+                if st.button("🗑️", key=f"btn_del_live_{r.get('serial_no')}_{idx}", use_container_width=True, help="حذف الفاتورة نهائياً"):
                     st.session_state.confirm_delete_id = r.get("serial_no")
                     st.rerun()
     else:
